@@ -102,7 +102,7 @@ namespace InfiniTD_2.GameRelated
 
             // Вычисляем координаты тайла
             int tileX = (int)((worldMouseX) / 50);
-            int tileY = (int)((worldMouseY + 25) / 50);
+            int tileY = (int)((worldMouseY) / 50);
 
             // ЛКМ - разместить тайл (удержание)
             if (Input.IsMouseButtonDown(0))

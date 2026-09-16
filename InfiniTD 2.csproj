@@ -27,7 +27,7 @@
     <ProductName>InfiniTD 2</ProductName>
     <PublisherName>Kernelit</PublisherName>
     <OpenBrowserOnPublish>false</OpenBrowserOnPublish>
-    <ApplicationRevision>4</ApplicationRevision>
+    <ApplicationRevision>5</ApplicationRevision>
     <ApplicationVersion>0.1.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -135,6 +135,8 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Framework\Audio\AudioSynth.cs" />
+    <Compile Include="Framework\Audio\MusicPlayer.cs" />
     <Compile Include="Framework\Font.cs" />
     <Compile Include="Framework\GL.cs" />
     <Compile Include="Framework\Input.cs" />

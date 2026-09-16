@@ -223,7 +223,7 @@ namespace InfiniTD_2
             switch (Msg)
             {
                 case WM_DESTROY:
-                    wglMakeCurrent(IntPtr.Zero, IntPtr.Zero);
+                    Cleanup();
                     PostQuitMessage(0);
                     return IntPtr.Zero;
                 case WM_SIZE:
@@ -251,10 +251,6 @@ namespace InfiniTD_2
                     {
                         uint vk = (uint)wParam;
                         if (vk == VK_F11)
-                        {
-                            ToggleFullScreen();
-                        }
-                        else if (vk == VK_ESCAPE && isFullScreen)
                         {
                             ToggleFullScreen();
                         }
@@ -293,13 +289,6 @@ namespace InfiniTD_2
                         int x = (short)(lParamInt & 0xFFFF);
                         int y = (short)(lParamInt >> 16 & 0xFFFF);
                         OnMouseMove?.Invoke(x, y);
-                        break;
-                    }
-                case WM_MOUSEWHEEL:
-                    {
-                        int delta = (int)((lParam.ToInt32() >> 16) & 0xFFFF);
-                        if (delta > 32767) delta -= 65536; // Преобразуем в знаковое
-                        OnMouseWheel?.Invoke(delta / 120f);
                         break;
                     }
             }
@@ -442,7 +431,7 @@ namespace InfiniTD_2
             {
                 ReleaseDC(hwnd, hdc);
             }
-
+            Environment.Exit(0);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using InfiniTD_2.GameRelated;
+﻿using InfiniTD_2.Framewok.Audio;
+using InfiniTD_2.GameRelated;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -31,7 +32,11 @@ namespace InfiniTD_2
 
             MainMenu.Init();
             LevelEditor.Init();
+            AudioSynth.Init();
 
+            MusicPlayer.LoadMainMusic();
+
+            MusicPlayer.Play(110f, true);
             stopwatch.Start();
             lastTime = stopwatch.Elapsed.TotalSeconds;
 
@@ -40,6 +45,8 @@ namespace InfiniTD_2
 
             isRunning = false;
         }
+
+
 
         static void RunGameLoop()
         {
@@ -54,9 +61,11 @@ namespace InfiniTD_2
                 double currentTime = stopwatch.Elapsed.TotalSeconds;
                 deltaTime = currentTime - lastTime;
                 lastTime = currentTime;
-
+                AudioSynth.Update();
+                MusicPlayer.Update((float)deltaTime);
                 MainMenu.Update();
                 Input.Update();
+                
                     
 
 

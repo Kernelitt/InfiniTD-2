@@ -200,8 +200,8 @@ namespace InfiniTD_2.GameRelated
 
         private void HandleTowerMenu()
         {    
-            float worldMouseX = (Input.MouseX / camera.Zoom) + camera.X;
-            float worldMouseY = (Input.MouseY / camera.Zoom) + camera.Y;
+            float worldMouseX = (Input.VirtualMouseX / camera.Zoom) + camera.X;
+            float worldMouseY = (Input.VirtualMouseY / camera.Zoom) + camera.Y;
 
             // Закрыть все меню
             foreach (var tower in towers)
@@ -289,7 +289,7 @@ namespace InfiniTD_2.GameRelated
             gameFont.DrawText(CurrentWave.ToString(), 50, 120, 1);
             gameFont.DrawText($"Enemies: {enemies.Count}", 10, 800, 0.5f, 1f, 1f, 1f);
             gameFont.DrawText($"Tower: {selectedTowerType} (Cost: {towerCosts[selectedTowerType]})", 10, 150, 0.5f, 0.8f, 0.8f, 0.8f);
-            gameFont.DrawText("LMB: Place, RMB: Menu", 10, 680, 0.4f, 0.6f, 0.6f, 0.6f);
+            gameFont.DrawText("Q: Place Tower, E: Tower Menu (in menu press 4,5,6,7,8,9 to change priority)", 10, 680, 0.4f, 0.6f, 0.6f, 0.6f);
             if (IsWaveActive)
             {
                 gameFont.DrawText($"Enemies: {EnemiesSpawned}/{EnemiesPerWave}", 10, 740, 0.6f, 1f, 1f, 1f);

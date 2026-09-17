@@ -19,6 +19,7 @@ namespace InfiniTD_2.GameRelated
         {
             this.path = path;
             Health *= healthMultiplier;
+            MaxHealth *= healthMultiplier;
             if (path.Length > 0)
             {
                 X = path[0].X * 50 + 25; // Центр клетки
@@ -70,13 +71,13 @@ namespace InfiniTD_2.GameRelated
             // Тёмная обводка
             Primitives.DrawCircle(screenX, screenY, size, 0.1f, 0.5f, 0.1f, 1f, 16);
             // Тело врага (зелёный круг)
-            Primitives.DrawCircle(screenX + 1, screenY + 1, size / 1.2f, 0.3f, 0.8f, 0.3f, 1f, 16);
+            Primitives.DrawCircle(screenX + 1 * camera.Zoom, screenY + 1 * camera.Zoom, size / 1.2f, 0.3f, 0.8f, 0.3f, 1f, 16);
 
 
 
             // Полоска здоровья
-            float healthWidth = 20 * camera.Zoom;
-            float healthHeight = 3 * camera.Zoom;
+            float healthWidth = 30 * camera.Zoom;
+            float healthHeight = 4 * camera.Zoom;
             float healthX = screenX - healthWidth / 2;
             float healthY = screenY - size - 5 * camera.Zoom;
 

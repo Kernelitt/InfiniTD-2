@@ -36,7 +36,7 @@ namespace InfiniTD_2
 
             isHovered = mx >= X && mx <= X + Width && my >= Y && my <= Y + Height;
 
-            bool isPressed = Input.IsMouseButtonDown(0);
+            bool isPressed = Input.IsMouseButtonReleased(0);
 
             if (isHovered && isPressed && !wasPressed)
             {
@@ -89,7 +89,7 @@ namespace InfiniTD_2
             int my = Input.VirtualMouseY;
 
             bool isHovered = mx >= X && mx <= X + Size && my >= Y && my <= Y + Size;
-            bool isPressed = Input.IsMouseButtonDown(0);
+            bool isPressed = Input.IsMouseButtonReleased(0);
 
             if (isHovered && isPressed && !wasPressed)
             {

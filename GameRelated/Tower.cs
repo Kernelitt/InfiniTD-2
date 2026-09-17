@@ -1,5 +1,4 @@
-﻿using InfiniTD_2.Framewok.Audio;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace InfiniTD_2.GameRelated
@@ -14,7 +13,7 @@ namespace InfiniTD_2.GameRelated
         public float FireRate { get; set; } = 1.4f; // Выстрелов в секунду
         public float Rotation { get; set; } = 0f;
         public float TargetRotation { get; set; } = 0f;
-        public float RotationSpeed { get; set; } = 15f;
+        public float RotationSpeed { get; set; } = 3f;
         public float ReloadTimer { get; set; } = 0f;
         public Enemy Target { get; set; } = null;
         public bool IsActive { get; set; } = true;
@@ -157,7 +156,7 @@ namespace InfiniTD_2.GameRelated
             float endX = screenX + (float)Math.Cos(Rotation) * barrelLength;
             float endY = screenY + (float)Math.Sin(Rotation) * barrelLength;
 
-            Primitives.DrawLine(screenX, screenY, endX, endY, 1 * camera.Zoom, 0.3f, 0.3f, 0.8f, 1f);
+            Primitives.DrawLine(screenX, screenY, endX, endY, 4 * camera.Zoom, 0.3f, 0.3f, 0.8f, 1f);
 
             // Круг башни
             Primitives.DrawCircle(screenX - size/4f, screenY - size/4f, size/2f, 0.4f, 0.4f, 0.6f, 1f, 16);
@@ -172,11 +171,11 @@ namespace InfiniTD_2.GameRelated
             // Меню башни
             if (ShowMenu)
             {
-                DrawMenu(camera, font);
+                DrawMenu(font);
             }
         }
 
-        private void DrawMenu(Camera camera, FontInstance font)
+        private void DrawMenu(FontInstance font)
         {
             float menuWidth = 250;
             float menuHeight = 700;

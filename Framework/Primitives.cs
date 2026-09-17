@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace InfiniTD_2
@@ -133,7 +132,7 @@ namespace InfiniTD_2
             {
                 double angle = (2.0 * Math.PI * i) / segments;
                 float vx = (float)(glCX + glR * Math.Cos(angle));
-                float vy = (float)(glCY + (glR * 16 / 9) * Math.Sin(angle));
+                float vy = (float)(glCY + (glR * 1600 / 900) * Math.Sin(angle));
 
                 int idx = (i + 1) * 6;
                 vertices[idx + 0] = vx;
@@ -149,14 +148,48 @@ namespace InfiniTD_2
 
         public static void DrawLine(float x1, float y1, float x2, float y2, float width, float r, float g, float b, float a)
         {
-            // Линия как тонкий прямоугольник
             float dx = x2 - x1;
             float dy = y2 - y1;
             float length = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            if (length == 0) return;
+
+            // Нормализованный перпендикуляр
             float nx = -dy / length * (width / 2f);
             float ny = dx / length * (width / 2f);
 
-            DrawQuad(x1 + nx, y1 + ny, x2 - x1 + 2 * nx, y2 - y1 + 2 * ny, r, g, b, a);
+            // 4 вершины прямоугольника
+            float leftX1 = x1 + nx;
+            float leftY1 = y1 + ny;
+            float rightX1 = x1 - nx;
+            float rightY1 = y1 - ny;
+            float leftX2 = x2 + nx;
+            float leftY2 = y2 + ny;
+            float rightX2 = x2 - nx;
+            float rightY2 = y2 - ny;
+
+            // Конвертируем в GL координаты
+            float glLeftX1 = (leftX1 / Width) * 2f - 1f;
+            float glLeftY1 = -(leftY1 / Height) * 2f + 1f;
+            float glRightX1 = (rightX1 / Width) * 2f - 1f;
+            float glRightY1 = -(rightY1 / Height) * 2f + 1f;
+            float glLeftX2 = (leftX2 / Width) * 2f - 1f;
+            float glLeftY2 = -(leftY2 / Height) * 2f + 1f;
+            float glRightX2 = (rightX2 / Width) * 2f - 1f;
+            float glRightY2 = -(rightY2 / Height) * 2f + 1f;
+
+            float[] vertices = new float[]
+            {
+        glLeftX1,  glLeftY1,  r, g, b, a,
+        glRightX1, glRightY1, r, g, b, a,
+        glLeftX2,  glLeftY2,  r, g, b, a,
+
+        glRightX1, glRightY1, r, g, b, a,
+        glRightX2, glRightY2, r, g, b, a,
+        glLeftX2,  glLeftY2,  r, g, b, a,
+            };
+
+            DrawPrimitive(vertices, 6);
         }
 
         private static void DrawPrimitive(float[] vertices, int vertexCount)

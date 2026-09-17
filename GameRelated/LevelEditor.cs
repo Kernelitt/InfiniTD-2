@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
 
 namespace InfiniTD_2.GameRelated
@@ -270,13 +268,13 @@ namespace InfiniTD_2.GameRelated
             for (int x = 0; x < gridWidth; x++)
             {
                 float gx = offsetX + x * gridSize;
-                Primitives.DrawLine(gx, 0, gx, 900, 1 * camera.Zoom, 0.3f, 0.3f, 0.3f, 0.3f);
+                Primitives.DrawLine(gx, 0, gx, 900, 3 * camera.Zoom, 0.3f, 0.3f, 0.3f, 0.3f);
             }
 
             for (int y = 0; y < gridHeight; y++)
             {
                 float gy = offsetY + y * gridSize;
-                Primitives.DrawLine(0, gy, 1600, gy, 1 * camera.Zoom, 0.3f, 0.3f, 0.3f, 0.3f);
+                Primitives.DrawLine(0, gy, 1600, gy, 3 * camera.Zoom, 0.3f, 0.3f, 0.3f, 0.3f);
             }
         }
 
@@ -304,37 +302,11 @@ namespace InfiniTD_2.GameRelated
         private static void DrawEditorUI()
         {
             // Панель информации
-            Primitives.DrawQuad(10, 900 - 200, 300, 190, 0f, 0f, 0f, 0.7f);
+            Primitives.DrawQuad(10, 5, 300, 120, 0f, 0f, 0f, 0.7f);
 
-            editorFont.DrawText("Level Editor", 20, 900 - 180, 0.7f, 1f, 1f, 1f);
-            editorFont.DrawText($"Tiles: {currentMap.Tiles?.Length ?? 0}", 20, 900 - 140, 0.5f, 1f, 1f, 1f);
-            editorFont.DrawText($"Selected: {selectedTileId} ({tileNames[selectedTileId]})", 20, 900 - 100, 0.5f, 1f, 1f, 1f);
-
-            // Палитра
-            for (byte i = 1; i <= 4; i++)
-            {
-                float x = 20 + (i - 1) * 70;
-                float y = 900 - 60;
-                float size = 50;
-
-                float r = 0.3f, g = 0.3f, b = 0.3f;
-                if (i == selectedTileId)
-                {
-                    r = 0.8f; g = 0.8f; b = 0.8f;
-                }
-
-                Primitives.DrawQuad(x, y, size, size, r, g, b, 1f);
-
-                switch (i)
-                {
-                    case 1: Primitives.DrawQuad(x + 5, y + 5, size - 10, size - 10, 0.8f, 0.8f, 0.75f, 1); break;
-                    case 2: Primitives.DrawQuad(x + 5, y + 5, size - 10, size - 10, 0.6f, 0.6f, 0.62f, 1); break;
-                    case 3: Primitives.DrawQuad(x + 5, y + 5, size - 10, size - 10, 0.2f, 1f, 0.2f, 1); break;
-                    case 4: Primitives.DrawQuad(x + 5, y + 5, size - 10, size - 10, 1f, 0f, 1f, 1); break;
-                }
-
-                editorFont.DrawText(i.ToString(), x + 20, y - 20, 0.7f, 1f, 1f, 1f);
-            }
+            editorFont.DrawText("Level Editor", 20, 10, 0.7f, 1f, 1f, 1f);
+            editorFont.DrawText($"Tiles: {currentMap.Tiles?.Length ?? 0}", 20, 50, 0.5f, 1f, 1f, 1f);
+            editorFont.DrawText($"Selected: {selectedTileId} ({tileNames[selectedTileId]})", 20, 90, 0.5f, 1f, 1f, 1f);
 
             // Подсказки
             editorFont.DrawText("1-4: Select tile", 10, 300, 0.5f, 0.8f, 0.8f, 0.8f);
@@ -343,7 +315,7 @@ namespace InfiniTD_2.GameRelated
             editorFont.DrawText("J: Save map",      10, 420, 0.5f, 0.8f, 0.8f, 0.8f);
             editorFont.DrawText("L: Load map",      10, 460, 0.5f, 0.8f, 0.8f, 0.8f);
             editorFont.DrawText("WASD: Move camera",10, 500, 0.5f, 0.8f, 0.8f, 0.8f);
-            editorFont.DrawText("Mouse Wheel: Zoom",10, 540, 0.5f, 0.8f, 0.8f, 0.8f);
+            editorFont.DrawText("X,C: Zoom",10, 540, 0.5f, 0.8f, 0.8f, 0.8f);
             editorFont.DrawText("ESC: Exit editor", 10, 580, 0.5f, 0.8f, 0.8f, 0.8f);
         }
 

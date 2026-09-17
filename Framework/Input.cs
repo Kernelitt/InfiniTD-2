@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Drawing;
-using System.Runtime.InteropServices;
 
 namespace InfiniTD_2
 {
@@ -46,6 +44,7 @@ namespace InfiniTD_2
             NativeWindow.OnMouseUp += OnMouseUpHandler;
             NativeWindow.OnMouseMove += OnMouseMoveHandler;
             NativeWindow.OnMouseWheel += OnMouseWheelHandler;
+
         }
 
         public static void Update()

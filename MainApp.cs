@@ -1,8 +1,8 @@
-﻿using InfiniTD_2.Framewok.Audio;
+﻿
+using InfiniTD_2.Framework;
+using InfiniTD_2.Framework.Audio;
 using InfiniTD_2.GameRelated;
-using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace InfiniTD_2
 {
@@ -11,10 +11,7 @@ namespace InfiniTD_2
         private static readonly Stopwatch stopwatch = new Stopwatch();
         private static double lastTime = 0;
         private static double deltaTime = 0;
-        private static FontInstance font;
-        private static UIButton button;
-        private static UICheckbox checkbox;
-        private static UISlider slider;
+
         static bool isRunning = false;
 
         public static double DeltaTime => deltaTime;
@@ -24,19 +21,15 @@ namespace InfiniTD_2
             NativeWindow.OnResize += OnResize;
             NativeWindow.OnKeyDown += OnKeyDown;
 
-
-            font = FontManager.GetFont("Consolas", 32f, 32, 48);
             Input.Init();
             Primitives.Init();
             ResolutionConv.Init();
-
             MainMenu.Init();
             LevelEditor.Init();
             AudioSynth.Init();
 
-            MusicPlayer.LoadMainMusic();
+            
 
-            MusicPlayer.Play(110f, true);
             stopwatch.Start();
             lastTime = stopwatch.Elapsed.TotalSeconds;
 
@@ -93,7 +86,6 @@ namespace InfiniTD_2
 
             MainMenu.Update();
 
-            Input.Update();
             GL.ClearColor(0.1f, 0.1f, 0.2f, 1.0f);
             GL.Clear(GL.GL_COLOR_BUFFER_BIT);
 

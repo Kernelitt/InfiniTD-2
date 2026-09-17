@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
+﻿using System.IO;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -15,10 +13,11 @@ namespace InfiniTD_2.GameRelated
             using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             using (var reader = new BinaryReader(stream))
             {
-                Map map = new Map();
-
-                // Читаем сложность
-                map.Difficulty = reader.ReadSingle();
+                Map map = new Map
+                {
+                    // Читаем сложность
+                    Difficulty = reader.ReadSingle()
+                };
 
                 // Читаем количество тайлов
                 int tileCount = reader.ReadInt32();

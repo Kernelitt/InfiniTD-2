@@ -1,48 +1,108 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 
 namespace InfiniTD_2.GameRelated
 {
-    internal class MainGame
+    [Serializable]
+    public class MainGame
     {
-        private int BaseHP = 10;
-        private int Money = 100;
-        private Map currentMap;
-        private Camera camera;
+        [NonSerialized] private int BaseHP = 10;
+        [NonSerialized] private int Money = 100;
+        [NonSerialized] private Map currentMap;
+        [NonSerialized] private readonly Camera camera;
 
-        private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
-        private readonly FontInstance iconsFont2= FontManager.GetFont("Wingdings", 72, 108, 108);
-        private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 72, 108);
-        private List<Enemy> enemies = new List<Enemy>();
-        private float spawnTimer = 0f;
-        private float spawnInterval = 2f;
-        private Vector2[] currentPath;
-        private List<Tower> towers = new List<Tower>();
-        private List<Projectile> projectiles = new List<Projectile>();
-        private Tower selectedTower = null;
-        private short selectedTowerType = 1;
-        private readonly int[] towerCosts = new int[] { 0, 50, 100, 150 };
+        [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
+        [NonSerialized] private readonly FontInstance iconsFont2 = FontManager.GetFont("Wingdings", 72, 108, 108);
+        [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 72, 108);
+        [NonSerialized] private readonly List<Enemy> enemies = new List<Enemy>();
+        [NonSerialized] private float spawnTimer = 0f;
+        [NonSerialized] private readonly Vector2[] currentPath;
+        [NonSerialized] private readonly List<Tower> towers = new List<Tower>();
+        [NonSerialized] private readonly List<Projectile> projectiles = new List<Projectile>();
+        [NonSerialized] private Tower selectedTower = null;
+        [NonSerialized] private short selectedTowerType = 1;
+        [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 100, 150 };
 
         // Волны
-        private int CurrentWave = 0;
-        private float WaveTimer = 0f;
-        private float WaveInterval = 10f; // Секунд между волнами
-        private int EnemiesPerWave = 5;
-        private float EnemyHealthMultiplier = 1f;
-        private float SpawnInterval = 2f;
-        private int EnemiesSpawned = 0;
-        private bool IsWaveActive = false;
+        [NonSerialized] private int CurrentWave = 0;
+        [NonSerialized] private float WaveTimer = 0f;
+        [NonSerialized] private readonly float WaveInterval = 10f;
+        [NonSerialized] private int EnemiesPerWave = 5;
+        [NonSerialized] private float EnemyHealthMultiplier = 1f;
+        [NonSerialized] private float SpawnInterval = 2f;
+        [NonSerialized] private int EnemiesSpawned = 0;
+        [NonSerialized] private bool IsWaveActive = false;
+        [NonSerialized] private static float saveTimer = 0f;
+        [NonSerialized] private const float SAVE_INTERVAL = 15f;
+
+        // Сохраняемые данные
+        [Serializable]
+        public class GameState
+        {
+            public int BaseHP;
+            public int Money;
+            public int CurrentWave;
+            public float WaveTimer;
+            public int EnemiesPerWave;
+            public float EnemyHealthMultiplier;
+            public float SpawnInterval;
+            public int EnemiesSpawned;
+            public bool IsWaveActive;
+            public float spawnTimer;
+            public short selectedTowerType;
+            public Map usedMap;
+            // Состояние врагов
+            public EnemyState[] Enemies;
+
+            // Состояние башен
+            public TowerState[] Towers;
+
+            // Состояние снарядов
+            public ProjectileState[] Projectiles;
+        }
+
+        [Serializable]
+        public struct EnemyState
+        {
+            public float X;
+            public float Y;
+            public float Health;
+            public int PathIndex;
+        }
+
+        [Serializable]
+        public struct TowerState
+        {
+            public short X;
+            public short Y;
+            public int Cost;
+            public int TargetingMode;
+        }
+
+        [Serializable]
+        public struct ProjectileState
+        {
+            public float X;
+            public float Y;
+            public Enemy Enemy;
+            public float Damage;
+        }
+
         public MainGame(string mapPath = null)
         {
             camera = new Camera();
 
-            // Загрузка карты
             if (!string.IsNullOrEmpty(mapPath) && System.IO.File.Exists(mapPath))
             {
                 currentMap = MapLoader.LoadMap(mapPath);
             }
-
+            else
+            {
+                currentMap = new Map
+                {
+                    Tiles = new Tile[0]
+                };
+            }
             var (portal, basePos) = Pathfinding.FindSpawnAndBase(currentMap);
             currentPath = Pathfinding.FindPath(currentMap, portal, basePos);
         }
@@ -66,11 +126,114 @@ namespace InfiniTD_2.GameRelated
             EnemiesSpawned = 0;
             spawnTimer = 0f;
 
-            // Увеличение сложности
             EnemiesPerWave = 5 + CurrentWave * 2;
             EnemyHealthMultiplier = 1f + (float)Math.Pow(1.15, CurrentWave);
             SpawnInterval = Math.Max(0.3f, 2f - CurrentWave * 0.1f);
         }
+
+        public GameState GetSaveData()
+        {
+            var state = new GameState
+            {
+                BaseHP = BaseHP,
+                Money = Money,
+                CurrentWave = CurrentWave,
+                WaveTimer = WaveTimer,
+                EnemiesPerWave = EnemiesPerWave,
+                EnemyHealthMultiplier = EnemyHealthMultiplier,
+                SpawnInterval = SpawnInterval,
+                EnemiesSpawned = EnemiesSpawned,
+                IsWaveActive = IsWaveActive,
+                spawnTimer = spawnTimer,
+                selectedTowerType = selectedTowerType,
+                usedMap = currentMap,
+
+                Enemies = new EnemyState[enemies.Count],
+                Towers = new TowerState[towers.Count],
+                Projectiles = new ProjectileState[projectiles.Count]
+            };
+
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                state.Enemies[i] = new EnemyState
+                {
+                    X = enemies[i].X,
+                    Y = enemies[i].Y,
+                    Health = enemies[i].Health,
+                    PathIndex = enemies[i].PathIndex
+                };
+            }
+
+            for (int i = 0; i < towers.Count; i++)
+            {
+                state.Towers[i] = new TowerState
+                {
+                    X = towers[i].X,
+                    Y = towers[i].Y,
+                    Cost = towers[i].Cost,
+                    TargetingMode = (int)towers[i].TargetingMode
+                };
+            }
+
+            for (int i = 0; i < projectiles.Count; i++)
+            {
+                state.Projectiles[i] = new ProjectileState
+                {
+                    X = projectiles[i].X,
+                    Y = projectiles[i].Y,
+                    Enemy = projectiles[i].Target,
+                    Damage = projectiles[i].Damage
+                };
+            }
+            state.usedMap = currentMap;
+
+            return state;
+        }
+
+        public void LoadFromData(GameState state)
+        {
+            BaseHP = state.BaseHP;
+            Money = state.Money;
+            CurrentWave = state.CurrentWave;
+            WaveTimer = state.WaveTimer;
+            EnemiesPerWave = state.EnemiesPerWave;
+            EnemyHealthMultiplier = state.EnemyHealthMultiplier;
+            SpawnInterval = state.SpawnInterval;
+            EnemiesSpawned = state.EnemiesSpawned;
+            IsWaveActive = state.IsWaveActive;
+            spawnTimer = state.spawnTimer;
+            selectedTowerType = state.selectedTowerType;
+            currentMap = state.usedMap;
+
+            enemies.Clear();
+            foreach (var enemyState in state.Enemies)
+            {
+                var enemy = new Enemy(currentPath, EnemyHealthMultiplier)
+                {
+                    X = enemyState.X,
+                    Y = enemyState.Y,
+                    Health = enemyState.Health,
+                    PathIndex = enemyState.PathIndex
+                };
+                enemies.Add(enemy);
+            }
+
+            towers.Clear();
+            foreach (var towerState in state.Towers)
+            {
+                var tower = new Tower(towerState.X, towerState.Y, towerState.Cost);
+                tower.TargetingMode = (TargetingMode)towerState.TargetingMode;
+                towers.Add(tower);
+            }
+
+            projectiles.Clear();
+            foreach (var projState in state.Projectiles)
+            {
+                var proj = new Projectile(projState.X, projState.Y, projState.Enemy, projState.Damage);
+                projectiles.Add(proj);
+            }
+        }
+
         public void Update()
         {
             camera.Update();
@@ -88,7 +251,6 @@ namespace InfiniTD_2.GameRelated
                     }
                 }
 
-                // Конец волны
                 if (EnemiesSpawned >= EnemiesPerWave && enemies.Count == 0)
                 {
                     IsWaveActive = false;
@@ -97,7 +259,6 @@ namespace InfiniTD_2.GameRelated
                 }
             }
 
-            // Обновление врагов
             for (int i = 0; i < enemies.Count; i++)
             {
                 enemies[i].Update((float)MainApp.DeltaTime);
@@ -108,7 +269,6 @@ namespace InfiniTD_2.GameRelated
                 }
             }
 
-            // Обновление башен
             foreach (var tower in towers)
             {
                 tower.Update(enemies, (float)MainApp.DeltaTime, projectiles);
@@ -118,35 +278,31 @@ namespace InfiniTD_2.GameRelated
                 projectile.Update((float)MainApp.DeltaTime);
             }
             projectiles.RemoveAll(p => !p.IsActive);
-            // Размещение башни (цифра 1-3)
-            if (Input.IsKeyPressed((uint)'1')) selectedTowerType = 1;
-            if (Input.IsKeyPressed((uint)'2')) selectedTowerType = 2;
-            if (Input.IsKeyPressed((uint)'3')) selectedTowerType = 3;
 
-            // Размещение башни на ЛКМ (если не в меню)
-            if (Input.IsKeyDown((uint)'Q'))
+            if (Input.IsKeyPressed('1')) selectedTowerType = 1;
+            if (Input.IsKeyPressed('2')) selectedTowerType = 2;
+            if (Input.IsKeyPressed('3')) selectedTowerType = 3;
+
+            if (Input.IsKeyDown('Q'))
             {
                 HandleTowerPlacement();
             }
 
-            // Открытие меню башни на ПКМ
-            if (Input.IsKeyPressed((uint)'E'))
+            if (Input.IsKeyPressed('E'))
             {
                 HandleTowerMenu();
             }
 
-            // Выбор режима наведения (цифры 4-9)
             if (selectedTower != null && selectedTower.ShowMenu)
             {
-                if (Input.IsKeyPressed((uint)'4')) selectedTower.SetTargetingMode(0);
-                if (Input.IsKeyPressed((uint)'5')) selectedTower.SetTargetingMode(1);
-                if (Input.IsKeyPressed((uint)'6')) selectedTower.SetTargetingMode(2);
-                if (Input.IsKeyPressed((uint)'7')) selectedTower.SetTargetingMode(3);
-                if (Input.IsKeyPressed((uint)'8')) selectedTower.SetTargetingMode(4);
-                if (Input.IsKeyPressed((uint)'9')) selectedTower.SetTargetingMode(5);
+                if (Input.IsKeyPressed('4')) selectedTower.SetTargetingMode(0);
+                if (Input.IsKeyPressed('5')) selectedTower.SetTargetingMode(1);
+                if (Input.IsKeyPressed('6')) selectedTower.SetTargetingMode(2);
+                if (Input.IsKeyPressed('7')) selectedTower.SetTargetingMode(3);
+                if (Input.IsKeyPressed('8')) selectedTower.SetTargetingMode(4);
+                if (Input.IsKeyPressed('9')) selectedTower.SetTargetingMode(5);
             }
 
-            // Очистка неактивных врагов
             foreach (var en in enemies)
             {
                 if (!en.IsActive)
@@ -154,10 +310,16 @@ namespace InfiniTD_2.GameRelated
             }
             enemies.RemoveAll(e => !e.IsActive);
 
-            // Проверка проигрыша
             if (BaseHP <= 0)
             {
                 // Game Over
+            }
+
+            saveTimer += (float)MainApp.DeltaTime;
+            if (saveTimer >= SAVE_INTERVAL)
+            {
+                saveTimer = 0f;
+                SaveSystem.SaveGame(this);
             }
         }
 
@@ -169,7 +331,6 @@ namespace InfiniTD_2.GameRelated
             int tileX = (int)(worldMouseX / 50);
             int tileY = (int)(worldMouseY / 50);
 
-            // Проверка что есть платформа
             bool hasPlatform = false;
             foreach (var tile in currentMap.Tiles)
             {
@@ -182,14 +343,12 @@ namespace InfiniTD_2.GameRelated
 
             if (!hasPlatform) return;
 
-            // Проверка что ещё нет башни
             foreach (var tower in towers)
             {
                 if (tower.X == tileX && tower.Y == tileY)
                     return;
             }
 
-            // Проверка денег
             int cost = towerCosts[selectedTowerType];
             if (Money >= cost)
             {
@@ -199,17 +358,15 @@ namespace InfiniTD_2.GameRelated
         }
 
         private void HandleTowerMenu()
-        {    
+        {
             float worldMouseX = (Input.VirtualMouseX / camera.Zoom) + camera.X;
             float worldMouseY = (Input.VirtualMouseY / camera.Zoom) + camera.Y;
 
-            // Закрыть все меню
             foreach (var tower in towers)
             {
                 tower.ShowMenu = false;
             }
 
-            // Найти башню под курсором
             foreach (var tower in towers)
             {
                 if (tower.IsMouseOver(worldMouseX, worldMouseY))
@@ -223,17 +380,12 @@ namespace InfiniTD_2.GameRelated
 
         public void Draw()
         {
-
-
-            // Отрисовка карты с учётом камеры
             foreach (var tile in currentMap.Tiles)
             {
-                // Позиция тайла с учётом камеры
                 float tileX = (tile.X * 50 - camera.X) * camera.Zoom;
                 float tileY = (tile.Y * 50 - camera.Y) * camera.Zoom;
                 float tileSize = 50 * camera.Zoom;
 
-                // Отрисовка только видимых тайлов (оптимизация)
                 if (tileX + tileSize < 0 || tileX > 1600 ||
                     tileY + tileSize < 0 || tileY > 900)
                     continue;
@@ -255,7 +407,6 @@ namespace InfiniTD_2.GameRelated
                 }
             }
 
-            // Отрисовка пути (для отладки)
             if (currentPath != null)
             {
                 for (int i = 0; i < currentPath.Length - 1; i++)
@@ -280,7 +431,7 @@ namespace InfiniTD_2.GameRelated
             {
                 projectile.Draw(camera);
             }
-            // UI (без влияния камеры)
+
             iconsFont.DrawText("Y", 10, 15, 1, 1, 0, 0);
             gameFont.DrawText(BaseHP.ToString(), 50, 20, 1);
             iconsFont.DrawText("n", 10, 65, 1, 1, 1, 0);
@@ -298,7 +449,6 @@ namespace InfiniTD_2.GameRelated
             {
                 gameFont.DrawText($"Next wave: {WaveInterval - WaveTimer:F1}s", 10, 740, 0.6f, 0.8f, 0.8f, 0.8f);
             }
-
         }
     }
 }

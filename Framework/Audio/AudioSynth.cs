@@ -1,4 +1,4 @@
-﻿namespace InfiniTD_2.Framewok.Audio
+﻿namespace InfiniTD_2.Framework.Audio
 {
     using System;
     using System.Collections.Generic;
@@ -62,7 +62,7 @@
         const int NUM_BUFFERS = 8; // 4 буфера в очереди
 
         // Активные голоса
-        private static List<Voice> voices = new List<Voice>();
+        private static readonly List<Voice> voices = new List<Voice>();
 
         struct Voice
         {
@@ -72,13 +72,13 @@
         }
 
         // Буферы для waveOut
-        private static IntPtr[] bufferDataPtrs = new IntPtr[NUM_BUFFERS];
-        private static IntPtr[] bufferWhPtrs = new IntPtr[NUM_BUFFERS];
-        private static bool[] bufferInUse = new bool[NUM_BUFFERS];
+        private static readonly IntPtr[] bufferDataPtrs = new IntPtr[NUM_BUFFERS];
+        private static readonly IntPtr[] bufferWhPtrs = new IntPtr[NUM_BUFFERS];
+        private static readonly bool[] bufferInUse = new bool[NUM_BUFFERS];
 
         // Микшер буфер
-        private static float[] mixBuffer = new float[BUFFER_SAMPLES * CHANNELS];
-        private static short[] outputBuffer = new short[BUFFER_SAMPLES * CHANNELS];
+        private static readonly float[] mixBuffer = new float[BUFFER_SAMPLES * CHANNELS];
+        private static readonly short[] outputBuffer = new short[BUFFER_SAMPLES * CHANNELS];
 
         public static void Init()
         {

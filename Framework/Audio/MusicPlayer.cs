@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace InfiniTD_2.Framewok.Audio
+﻿namespace InfiniTD_2.Framework.Audio
 {
     using System;
     using System.Collections.Generic;
@@ -16,8 +13,9 @@ namespace InfiniTD_2.Framewok.Audio
             public float Release;
             public float Velocity;
             public string Instrument;
+            public string Channel;
 
-            public Note(int freq, float start, float dur, string inst = "piano", float release = 0.1f, float velocity = 1.0f)
+            public Note(int freq, float start, float dur, string inst = "piano", float release = 0.1f, float velocity = 1.0f, string channel = "default")
             {
                 Frequency = freq;
                 StartTime = start;
@@ -25,240 +23,336 @@ namespace InfiniTD_2.Framewok.Audio
                 Release = release;
                 Velocity = velocity;
                 Instrument = inst;
+                Channel = channel;
             }
         }
 
         public class Track
         {
             public List<Note> Notes = new List<Note>();
+            public string Channel = "default";
+
+            public Track(string channel = "default")
+            {
+                Channel = channel;
+            }
 
             public void AddNote(int frequency, float startTime, float duration, string instrument = "piano", float release = 0.1f, float velocity = 1.0f)
             {
-                Notes.Add(new Note(frequency, startTime, duration, instrument, release, velocity));
+                Notes.Add(new Note(frequency, startTime, duration, instrument, release, velocity, Channel));
             }
 
-            public void AddKick(float startTime)
+            public void AddKick(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "kick"));
+                Notes.Add(new Note(0, startTime, 0, "kick", 0, velocity, Channel));
             }
 
-            public void AddKick808(float startTime)
+            public void AddKick808(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "kick808"));
+                Notes.Add(new Note(0, startTime, 0, "kick808", 0, velocity, Channel));
             }
 
-            public void AddSnare(float startTime)
+            public void AddSnare(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "snare"));
+                Notes.Add(new Note(0, startTime, 0, "snare", 0, velocity, Channel));
             }
 
-            public void AddSnare808(float startTime)
+            public void AddSnare808(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "snare808"));
+                Notes.Add(new Note(0, startTime, 0, "snare808", 0, velocity, Channel));
             }
 
-            public void AddHiHat(float startTime)
+            public void AddHiHat(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "hihat"));
+                Notes.Add(new Note(0, startTime, 0, "hihat", 0, velocity, Channel));
             }
 
-            public void AddHiHatOpen(float startTime)
+            public void AddHiHatOpen(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "hihatOpen"));
+                Notes.Add(new Note(0, startTime, 0, "hihatOpen", 0, velocity, Channel));
             }
 
-            public void AddClap(float startTime)
+            public void AddClap(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "clap"));
+                Notes.Add(new Note(0, startTime, 0, "clap", 0, velocity, Channel));
             }
 
-            public void AddCrash(float startTime)
+            public void AddCrash(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "crash"));
+                Notes.Add(new Note(0, startTime, 0, "crash", 0, velocity, Channel));
             }
 
             public void AddBass(int frequency, float startTime, float duration = 0.3f, float release = 0.1f, float velocity = 1.0f)
             {
-                Notes.Add(new Note(frequency, startTime, duration, "bass", release, velocity));
+                Notes.Add(new Note(frequency, startTime, duration, "bass", release, velocity, Channel));
             }
 
             public void AddLead(int frequency, float startTime, float duration = 0.4f, float release = 0.15f, float velocity = 1.0f)
             {
-                Notes.Add(new Note(frequency, startTime, duration, "lead", release, velocity));
+                Notes.Add(new Note(frequency, startTime, duration, "lead", release, velocity, Channel));
             }
 
             public void AddPad(int frequency, float startTime, float duration = 1.0f, float release = 0.3f, float velocity = 1.0f)
             {
-                Notes.Add(new Note(frequency, startTime, duration, "pad", release, velocity));
+                Notes.Add(new Note(frequency, startTime, duration, "pad", release, velocity, Channel));
             }
 
-            public void AddLaser(float startTime)
+            public void AddLaser(float startTime, float velocity = 1.0f)
             {
-                Notes.Add(new Note(0, startTime, 0, "laser"));
+                Notes.Add(new Note(0, startTime, 0, "laser", 0, velocity, Channel));
             }
         }
 
-        private static List<Track> tracks = new List<Track>();
-        private static float currentTempo = 120f;
-        private static float trackTime = 0f;
-        private static float lastTrackTime = 0f;
-        private static bool isPlaying = false;
-        private static bool isLooping = false;
-        private static float globalVolume = 1.0f;
-        private static float maxTrackTime = 0f;
+        private static readonly Dictionary<string, List<Track>> channels = new Dictionary<string, List<Track>>();
+        private static readonly Dictionary<string, float> channelTempos = new Dictionary<string, float>();
+        private static readonly Dictionary<string, float> channelTimes = new Dictionary<string, float>();
+        private static readonly Dictionary<string, float> channelLastTimes = new Dictionary<string, float>();
+        private static readonly Dictionary<string, bool> channelPlaying = new Dictionary<string, bool>();
+        private static readonly Dictionary<string, bool> channelLooping = new Dictionary<string, bool>();
+        private static readonly Dictionary<string, float> channelMaxTimes = new Dictionary<string, float>();
+        private static readonly Dictionary<string, float> channelVolumes = new Dictionary<string, float>();
 
-        public static void Clear()
+
+        public static void Init()
         {
-            tracks.Clear();
-            trackTime = 0f;
-            lastTrackTime = 0f;
-            maxTrackTime = 0f;
+            channels.Clear();
+            channelTempos.Clear();
+            channelTimes.Clear();
+            channelLastTimes.Clear();
+            channelPlaying.Clear();
+            channelLooping.Clear();
+            channelMaxTimes.Clear();
+            channelVolumes.Clear();
+
+            // Создаём канал по умолчанию
+            CreateChannel("default");
         }
 
-        public static Track CreateTrack()
+        public static void CreateChannel(string channelName)
         {
-            Track track = new Track();
-            tracks.Add(track);
+            if (!channels.ContainsKey(channelName))
+            {
+                channels[channelName] = new List<Track>();
+                channelTempos[channelName] = 120f;
+                channelTimes[channelName] = 0f;
+                channelLastTimes[channelName] = 0f;
+                channelPlaying[channelName] = false;
+                channelLooping[channelName] = false;
+                channelMaxTimes[channelName] = 0f;
+                channelVolumes[channelName] = 1.0f;
+            }
+        }
+
+        public static void ClearChannel(string channelName)
+        {
+            if (channels.ContainsKey(channelName))
+            {
+                channels[channelName].Clear();
+                channelTimes[channelName] = 0f;
+                channelLastTimes[channelName] = 0f;
+                channelMaxTimes[channelName] = 0f;
+            }
+        }
+
+        public static void ClearAll()
+        {
+            channels.Clear();
+            channelTempos.Clear();
+            channelTimes.Clear();
+            channelLastTimes.Clear();
+            channelPlaying.Clear();
+            channelLooping.Clear();
+            channelMaxTimes.Clear();
+            channelVolumes.Clear();
+            CreateChannel("default");
+        }
+
+        public static Track CreateTrack(string channelName = "default")
+        {
+            if (!channels.ContainsKey(channelName))
+            {
+                CreateChannel(channelName);
+            }
+
+            Track track = new Track(channelName);
+            channels[channelName].Add(track);
             return track;
         }
 
-        public static void Play(float tempo, bool loop = false)
+        public static void Play(string channelName, float tempo, bool loop = false)
         {
-            currentTempo = tempo;
-            trackTime = 0f;
-            lastTrackTime = 0f;
-            isPlaying = true;
-            isLooping = loop;
+            if (!channels.ContainsKey(channelName))
+            {
+                CreateChannel(channelName);
+            }
+
+            channelTempos[channelName] = tempo;
+            channelTimes[channelName] = 0f;
+            channelLastTimes[channelName] = 0f;
+            channelPlaying[channelName] = true;
+            channelLooping[channelName] = loop;
 
             // Вычисляем максимальную длину трека
-            maxTrackTime = 0f;
-            foreach (Track track in tracks)
+            float maxTime = 0f;
+            foreach (Track track in channels[channelName])
             {
                 foreach (Note note in track.Notes)
                 {
                     float endTime = note.StartTime + note.Duration;
-                    if (endTime > maxTrackTime) maxTrackTime = endTime;
+                    if (endTime > maxTime) maxTime = endTime;
                 }
             }
+            channelMaxTimes[channelName] = maxTime;
 
-            Console.WriteLine($"Playing {tracks.Count} tracks at {tempo} BPM (loop={loop}, length={maxTrackTime:F2}s)");
+            Console.WriteLine($"Channel '{channelName}': Playing at {tempo} BPM (loop={loop}, length={maxTime:F2}s)");
         }
 
-        public static void Stop()
+        public static void Stop(string channelName)
         {
-            isPlaying = false;
+            if (channelPlaying.ContainsKey(channelName))
+            {
+                channelPlaying[channelName] = false;
+            }
+        }
+
+        public static void StopAll()
+        {
+            foreach (var kvp in channelPlaying)
+            {
+                channelPlaying[kvp.Key] = false;
+            }
+        }
+
+        public static void SetChannelVolume(string channelName, float volume)
+        {
+            if (channelVolumes.ContainsKey(channelName))
+            {
+                channelVolumes[channelName] = Math.Max(0f, Math.Min(1f, volume));
+            }
         }
 
         public static void SetGlobalVolume(float volume)
         {
-            globalVolume = Math.Max(0f, Math.Min(1f, volume));
-            AudioSynth.SetVolume(globalVolume);
+            AudioSynth.SetVolume(volume);
         }
 
-        public static void SetLooping(bool loop)
+        public static void SetLooping(string channelName, bool loop)
         {
-            isLooping = loop;
+            if (channelLooping.ContainsKey(channelName))
+            {
+                channelLooping[channelName] = loop;
+            }
         }
 
         public static void Update(float deltaTime)
         {
-            if (!isPlaying || tracks.Count == 0) return;
-
-            float tempoMultiplier = currentTempo / 120f;
-            trackTime += deltaTime * tempoMultiplier;
-
-            // Проверка на конец трека
-            if (trackTime > maxTrackTime + 0.1f)
+            foreach (string channelName in new List<string>(channels.Keys))
             {
-                if (isLooping)
-                {
-                    trackTime = 0f;
-                    lastTrackTime = 0f;
-                    Console.WriteLine("Looping track...");
-                }
-                else
-                {
-                    isPlaying = false;
-                    Console.WriteLine("Track finished");
-                    return;
-                }
-            }
+                if (!channelPlaying[channelName] || channels[channelName].Count == 0) continue;
 
-            foreach (Track track in tracks)
-            {
-                foreach (Note note in track.Notes)
-                {
-                    // Проверяем ноту с учётом зацикливания
-                    float noteStart = note.StartTime;
-                    float trackLength = maxTrackTime;
+                float tempoMultiplier = channelTempos[channelName] / 120f;
+                channelTimes[channelName] += deltaTime * tempoMultiplier;
 
-                    // Если нота должна сыграть в этом кадре
-                    if (noteStart <= trackTime && noteStart > lastTrackTime)
+                // Проверка на конец трека
+                if (channelTimes[channelName] > channelMaxTimes[channelName] + 0.1f)
+                {
+                    if (channelLooping[channelName])
                     {
-                        float noteVelocity = note.Velocity * globalVolume;
+                        channelTimes[channelName] = 0f;
+                        channelLastTimes[channelName] = 0f;
+                    }
+                    else
+                    {
+                        channelPlaying[channelName] = false;
+                        continue;
+                    }
+                }
 
-                        switch (note.Instrument)
+                float channelVolume = channelVolumes[channelName];
+
+                foreach (Track track in channels[channelName])
+                {
+                    foreach (Note note in track.Notes)
+                    {
+                        float noteStart = note.StartTime;
+
+                        if (noteStart <= channelTimes[channelName] && noteStart > channelLastTimes[channelName])
                         {
-                            case "kick":
-                                AudioSynth.PlayKick();
-                                break;
-                            case "kick808":
-                                AudioSynth.PlayKick808();
-                                break;
-                            case "snare":
-                                AudioSynth.PlaySnare();
-                                break;
-                            case "snare808":
-                                AudioSynth.PlaySnare808();
-                                break;
-                            case "hihat":
-                                AudioSynth.PlayHiHat();
-                                break;
-                            case "hihatOpen":
-                                AudioSynth.PlayHiHatOpen();
-                                break;
-                            case "clap":
-                                AudioSynth.PlayClap();
-                                break;
-                            case "crash":
-                                AudioSynth.PlayCrash();
-                                break;
-                            case "bass":
-                                AudioSynth.PlayBass(note.Frequency, note.Duration, note.Release, noteVelocity);
-                                break;
-                            case "lead":
-                                AudioSynth.PlayLead(note.Frequency, note.Duration, note.Release, noteVelocity);
-                                break;
-                            case "pad":
-                                AudioSynth.PlayPad(note.Frequency, note.Duration, note.Release, noteVelocity);
-                                break;
-                            case "laser":
-                                AudioSynth.PlayLaser();
-                                break;
-                            case "piano":
-                            default:
-                                AudioSynth.PlayPiano(note.Frequency, note.Duration, note.Release, noteVelocity);
-                                break;
+                            float noteVelocity = note.Velocity * channelVolume;
+
+                            switch (note.Instrument)
+                            {
+                                case "kick":
+                                    AudioSynth.PlayKick();
+                                    break;
+                                case "kick808":
+                                    AudioSynth.PlayKick808();
+                                    break;
+                                case "snare":
+                                    AudioSynth.PlaySnare();
+                                    break;
+                                case "snare808":
+                                    AudioSynth.PlaySnare808();
+                                    break;
+                                case "hihat":
+                                    AudioSynth.PlayHiHat();
+                                    break;
+                                case "hihatOpen":
+                                    AudioSynth.PlayHiHatOpen();
+                                    break;
+                                case "clap":
+                                    AudioSynth.PlayClap();
+                                    break;
+                                case "crash":
+                                    AudioSynth.PlayCrash();
+                                    break;
+                                case "bass":
+                                    AudioSynth.PlayBass(note.Frequency, note.Duration, note.Release, noteVelocity);
+                                    break;
+                                case "lead":
+                                    AudioSynth.PlayLead(note.Frequency, note.Duration, note.Release, noteVelocity);
+                                    break;
+                                case "pad":
+                                    AudioSynth.PlayPad(note.Frequency, note.Duration, note.Release, noteVelocity);
+                                    break;
+                                case "laser":
+                                    AudioSynth.PlayLaser();
+                                    break;
+                                case "piano":
+                                default:
+                                    AudioSynth.PlayPiano(note.Frequency, note.Duration, note.Release, noteVelocity);
+                                    break;
+                            }
                         }
                     }
                 }
-            }
 
-            lastTrackTime = trackTime;
+                channelLastTimes[channelName] = channelTimes[channelName];
+            }
         }
 
-        public static void LoadMainMusic()
+        public static bool IsPlaying(string channelName)
         {
-            Clear();
-            Track piano = CreateTrack();
-            Track lead  = CreateTrack();
-            Track drums = CreateTrack();
+            return channelPlaying.ContainsKey(channelName) && channelPlaying[channelName];
+        }
+
+        public static float GetChannelTime(string channelName)
+        {
+            return channelTimes.ContainsKey(channelName) ? channelTimes[channelName] : 0f;
+        }
+
+        public static void PlayMainMusic()
+        {
+
+            Track piano = CreateTrack("bgm");
+            Track lead  = CreateTrack("bgm");
+            Track drums = CreateTrack("bgm");
 
             for (int i = 0; i < 32; i++)
             {
                 drums.AddKick(0.25f + i);
                 drums.AddHiHat(0.5f + i);
-                drums.AddSnare(0.75f + i);
+                drums.AddSnare808(0.75f + i);
                 drums.AddHiHat(1.0f + i);
 
                 piano.AddNote(161, 0.01f + i, 1f, "pad", 1f, 0.2f);
@@ -281,13 +375,8 @@ namespace InfiniTD_2.Framewok.Audio
             lead.AddNote(61, 0.01f, 8f, "lead", 8f);  
             lead.AddNote(51, 8f, 8f, "lead", 8f);
             lead.AddNote(81, 16f, 8f, "lead", 8f); 
-            lead.AddNote(121, 24f, 8f, "lead", 8f);  
-        }
-
-        public static void LoadShootSound()
-        {
-            Track laser = CreateTrack();
-            laser.AddLaser(0f);
+            lead.AddNote(121, 24f, 8f, "lead", 8f);
+            Play("bgm",90f,true);
         }
     }
 

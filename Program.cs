@@ -1,10 +1,5 @@
-﻿using InfiniTD_2.GameRelated;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InfiniTD_2
 {
@@ -33,7 +28,9 @@ namespace InfiniTD_2
 
             NativeWindow.Create("InfiniTD 2", 1600, 900);
             GL.Init();
-
+#if !NO_MOD_SUPPORT
+            Framework.ModManager.InitAndLoadMods("mods/");
+#endif
             MainApp.Start();
 
             NativeWindow.Cleanup();

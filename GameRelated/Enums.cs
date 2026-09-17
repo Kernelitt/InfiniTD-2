@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -15,21 +11,23 @@ namespace InfiniTD_2.GameRelated
         Portal
     }
 
-    public struct PortalSettings
+    public readonly struct PortalSettings
     {
-        float Difficulty;
-        EnemyTypes[] EnemyList;
+        readonly float Difficulty;
+        readonly EnemyTypes[] EnemyList;
     }
 
     public enum EnemyTypes
     {
         Basic
     }
+    [Serializable]
     public struct Map
     {
         public Tile[] Tiles;
         public float Difficulty;
     }
+    [Serializable]
     public struct Tile
     {
         public short X;

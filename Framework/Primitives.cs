@@ -75,7 +75,7 @@ namespace InfiniTD_2.Framework
 
                 for (int j = 0; j <= 1; j++)
                 {
-                    double angle = (2.0 * Math.PI * (i + j)) / segments;
+                    double angle = (2.0 * Math.PI * (i + j)) / (segments + 1);
                     float vx = (float)(glCX + glR * Math.Cos(angle));
                     float vy = (float)(glCY + glR * (Graphics.Width / (float)Graphics.Height) * Math.Sin(angle));
 

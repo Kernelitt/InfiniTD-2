@@ -106,6 +106,14 @@ namespace InfiniTD_2.GameRelated
             {
                 case MenuScenes.Main:
                     defaultFont.DrawText("InfiniTD 2", 1200, 500, 1);
+
+                    defaultFont.DrawText($"InfiniTD 2 {Program.AppVersion}", 0, 0, 0.5f);
+#if !NO_MOD_SUPPORT
+                    
+                    for (int i = 0; i < ModManager.loadedMods.Count; i++)
+                        defaultFont.DrawText($"{ModManager.loadedMods[i].Id} - {ModManager.loadedMods[i].Name} - {ModManager.loadedMods[i].Author}", 0, 20 + 20 * i, 0.5f);
+#endif
+
                     playButton.Draw(buttonFont);
                     continueButton.Draw(iconsFont);
                     editorButton.Draw(buttonFont);

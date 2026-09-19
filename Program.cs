@@ -13,25 +13,29 @@ namespace InfiniTD_2
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        public const string AppVersion = "Pre-Alpha 1.4";
+
         [STAThread]
         static void Main(string[] args)
         {
 
 #if DEBUG
             Console.WriteLine("Debug Build!");
-#endif
-
-#if !DEBUG
+#else
             ShowWindow(GetConsoleWindow(), 0);
             FreeConsole();
 #endif
 
             NativeWindow.Create("InfiniTD 2", 1600, 900);
             GL.Init();
+            GL.Viewport(0, 0, 1600, 900);
+
             Console.WriteLine($"OpenGL Version: {GL.GetString(GL.GL_VERSION)}");
             Console.WriteLine($"GLSL Version: {GL.GetString(GL.GL_SHADING_LANGUAGE_VERSION)}");
             Console.WriteLine($"Vendor: {GL.GetString(0x1F00)}"); // GL_VENDOR
             Console.WriteLine($"Renderer: {GL.GetString(0x1F01)}"); // GL_RENDERER
+
 #if !NO_MOD_SUPPORT
             Framework.ModManager.InitAndLoadMods("mods/");
 #endif

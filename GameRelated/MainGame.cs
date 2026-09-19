@@ -329,6 +329,8 @@ namespace InfiniTD_2.GameRelated
                 saveTimer = 0f;
                 SaveSystem.SaveGame(this);
             }
+
+            SimulationSpeed = speedSlider.Value;
         }
 
         private void HandleTowerPlacement()

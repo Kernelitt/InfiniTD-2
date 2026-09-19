@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Web.Script.Serialization; // Требуется ссылка на System.Web.Extensions
 
@@ -20,6 +21,8 @@ namespace InfiniTD_2.Framework
     {
         private static readonly Dictionary<string, string> ModDirectories = new Dictionary<string, string>();
         private static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer();
+
+        public static List<ModManifest> loadedMods = new List<ModManifest>();
 
         public static void InitAndLoadMods(string modsRootPath)
         {
@@ -69,6 +72,9 @@ namespace InfiniTD_2.Framework
                             initMethod.Invoke(null, null);
                             initFound = true;
                             Console.WriteLine($"[Mods] Мод '{manifest.Name}' v{manifest.Version} успешно загружен.");
+                            
+                            loadedMods.Add(manifest);
+                            Console.WriteLine(loadedMods.Count);
                             break;
                         }
                     }

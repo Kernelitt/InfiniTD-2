@@ -1,6 +1,7 @@
-﻿using System;
+﻿using InfiniTD_2.Framework;
+using System;
 using System.Collections.Generic;
-using InfiniTD_2.Framework;
+using System.Windows.Forms;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -133,7 +134,9 @@ namespace InfiniTD_2.GameRelated
             {
                 float towerX = X * 50 + 25;
                 float towerY = Y * 50 + 25;
-                projectiles.Add(new Projectile(towerX, towerY, Target, Damage));
+                float endX = towerX + (float)Math.Cos(Rotation) * 28;
+                float endY = towerY + (float)Math.Sin(Rotation) * 28;
+                projectiles.Add(new Projectile(endX, endY, Target, Damage));
             }
         }
 
@@ -218,9 +221,6 @@ namespace InfiniTD_2.GameRelated
                     font.DrawText(modes[i], menuX + 15, y, 0.35f, 0.7f, 0.7f, 0.7f);
                 }
             }
-
-            // Подсказка
-            font.DrawText("Click mode to change", menuX + 10, menuY + 280, 0.3f, 0.5f, 0.5f, 0.5f);
         }
 
         public bool IsMouseOver(float mouseX, float mouseY)

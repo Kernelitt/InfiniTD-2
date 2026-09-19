@@ -312,9 +312,6 @@
                                 case "lead":
                                     AudioSynth.PlayLead(note.Frequency, note.Duration, note.Release, noteVelocity);
                                     break;
-                                case "pad":
-                                    AudioSynth.PlayPad(note.Frequency, note.Duration, note.Release, noteVelocity);
-                                    break;
                                 case "laser":
                                     AudioSynth.PlayLaser();
                                     break;
@@ -351,16 +348,12 @@
             for (int i = 0; i < 32; i++)
             {
                 drums.AddKick(0.25f + i);
-                drums.AddHiHat(0.5f + i);
-                drums.AddSnare808(0.75f + i);
-                drums.AddHiHat(1.0f + i);
 
-                piano.AddNote(161, 0.01f + i, 1f, "pad", 1f, 0.2f);
-                piano.AddNote(211, 0.25f + i, 1f, "pad", 1f, 0.2f);
-                piano.AddNote(181, 0.5f + i, 1f, "pad", 1f, 0.2f);
-                piano.AddNote(221, 0.75f + i, 1f, "pad", 1f, 0.2f);
+                drums.AddSnare808(0.75f + i);
+
+                
             }
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 36; i++)
             {
                 piano.AddNote(121, 0.01f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
                 piano.AddNote(111, 0.25f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
@@ -369,13 +362,20 @@
                 piano.AddNote(321, 1.00f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
                 piano.AddNote(311, 1.25f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
                 piano.AddNote(421, 1.50f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(411, 1.75f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
+                piano.AddNote(391, 1.75f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
             }
+            for (int i = 0; i < 2; i++)
+            {
+                drums.AddKick(0.25f + i);
 
-            lead.AddNote(61, 0.01f, 8f, "lead", 8f);  
-            lead.AddNote(51, 8f, 8f, "lead", 8f);
-            lead.AddNote(81, 16f, 8f, "lead", 8f); 
-            lead.AddNote(121, 24f, 8f, "lead", 8f);
+                drums.AddSnare808(0.75f + i);
+
+
+                piano.AddNote(120, 0.001f  + i * 32, 8f, "lead", 4.2f, 0.2f);
+                piano.AddNote(110, 8.000f  + i * 32, 8f, "lead", 4.2f, 0.2f);
+                piano.AddNote(100, 16.000f + i * 32, 8f, "lead", 4.2f, 0.2f);
+                piano.AddNote(140, 24.00f  + i * 32, 8f, "lead", 4.2f, 0.2f);
+            }
             Play("bgm",90f,true);
         }
     }

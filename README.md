@@ -16,7 +16,7 @@
   "Author": "Kernelit",
   "AssemblyName": "KrutolMod.dll",
   }
-  '''
+
 - Далее создайте в Visual Studio 2026 библиотеку классов на .NET Framework 4.8
 - Создайте ссылку на InfiniTD2.exe с поддержкой модов
 ### Теперь вы можете создать мод меняющий значения

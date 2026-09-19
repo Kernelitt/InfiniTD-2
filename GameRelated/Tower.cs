@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
 {
+    [Serializable]
     public class Tower
     {
         public short X { get; set; }
@@ -256,7 +258,7 @@ namespace InfiniTD_2.GameRelated
             }
         }
     }
-
+    [Serializable]
     public enum TargetingMode
     {
         First,    // Ближайший к базе

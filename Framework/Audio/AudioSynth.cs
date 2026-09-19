@@ -57,28 +57,25 @@
 
         const int SAMPLE_RATE = 44100;
         const int CHANNELS = 2;
-        const int BITS_PER_SAMPLE = 16;
-        const int BUFFER_SAMPLES = 1024; // Маленький буфер для streaming
-        const int NUM_BUFFERS = 8; // 4 буфера в очереди
+        const int BITS_PER_SAMPLE = 32; // Теперь 32 бита
+        const int BUFFER_SAMPLES = 1024;
+        const int NUM_BUFFERS = 8;
 
-        // Активные голоса
         private static readonly List<Voice> voices = new List<Voice>();
 
         struct Voice
         {
-            public short[] Samples;
+            public float[] Samples; // Сэмплы теперь типа float
             public int Position;
             public bool IsActive;
         }
 
-        // Буферы для waveOut
         private static readonly IntPtr[] bufferDataPtrs = new IntPtr[NUM_BUFFERS];
         private static readonly IntPtr[] bufferWhPtrs = new IntPtr[NUM_BUFFERS];
         private static readonly bool[] bufferInUse = new bool[NUM_BUFFERS];
 
-        // Микшер буфер
         private static readonly float[] mixBuffer = new float[BUFFER_SAMPLES * CHANNELS];
-        private static readonly short[] outputBuffer = new short[BUFFER_SAMPLES * CHANNELS];
+        private static readonly float[] outputBuffer = new float[BUFFER_SAMPLES * CHANNELS]; // Выходной буфер тоже float
 
         public static void Init()
         {
@@ -86,7 +83,7 @@
 
             WAVEFORMATEX wfx = new WAVEFORMATEX
             {
-                wFormatTag = 1,
+                wFormatTag = 3, // WAVE_FORMAT_IEEE_FLOAT (для 32-bit float звука)
                 nChannels = CHANNELS,
                 nSamplesPerSec = SAMPLE_RATE,
                 nAvgBytesPerSec = (uint)(SAMPLE_RATE * CHANNELS * BITS_PER_SAMPLE / 8),
@@ -108,17 +105,16 @@
                 return;
             }
 
-            // Инициализируем буферы
             for (int i = 0; i < NUM_BUFFERS; i++)
             {
                 bufferInUse[i] = false;
             }
 
             isInitialized = true;
-            Console.WriteLine($"AudioSynth initialized with {NUM_BUFFERS} buffers");
+            Console.WriteLine($"AudioSynth initialized with {NUM_BUFFERS} buffers (32-bit Float)");
         }
 
-        public static void PlaySample(short[] sample)
+        public static void PlaySample(float[] sample) // Принимает float[] вместо short[]
         {
             if (!isInitialized || sample == null) return;
 
@@ -134,7 +130,6 @@
         {
             if (!isInitialized) return;
 
-            // Проверяем какие буферы освободились
             for (int i = 0; i < NUM_BUFFERS; i++)
             {
                 if (bufferInUse[i])
@@ -150,7 +145,6 @@
                 }
             }
 
-            // Находим свободный буфер
             int freeBuffer = -1;
             for (int i = 0; i < NUM_BUFFERS; i++)
             {
@@ -161,9 +155,8 @@
                 }
             }
 
-            if (freeBuffer == -1) return; // Нет свободных буферов
+            if (freeBuffer == -1) return;
 
-            // Микшируем все активные голоса
             Array.Clear(mixBuffer, 0, mixBuffer.Length);
 
             for (int i = 0; i < voices.Count; i++)
@@ -184,7 +177,7 @@
                 {
                     if (voice.Position + j < voice.Samples.Length)
                     {
-                        mixBuffer[j] += voice.Samples[voice.Position + j] / 32767f;
+                        mixBuffer[j] += voice.Samples[voice.Position + j];
                     }
                 }
 
@@ -196,30 +189,33 @@
                 voices[i] = voice;
             }
 
-            // Удаляем неактивные голоса
             voices.RemoveAll(v => !v.IsActive);
 
-            // Конвертируем в short
+            // Мягкое ограничение (Soft Clipping) с помощью кубической функции tanh-аппроксимации
+            // Это убирает неприятный цифровой треск при наложении множества звуков
             for (int i = 0; i < BUFFER_SAMPLES * CHANNELS; i++)
             {
-                float sample = mixBuffer[i];
-                sample = Math.Max(-1f, Math.Min(1f, sample));
-                outputBuffer[i] = (short)(sample * 32767);
+                float x = mixBuffer[i];
+                // Кубический софт-клиппер
+                if (x > 1.0f) x = 1.0f;
+                else if (x < -1.0f) x = -1.0f;
+                else x = x - (x * x * x) / 3.0f;
+
+                outputBuffer[i] = x * 1.2f; // Немного компенсируем громкость после мягкого сжатия
             }
 
-            // Отправляем буфер
             SendBuffer(freeBuffer);
         }
 
         private static void SendBuffer(int bufferIndex)
         {
-            IntPtr dataPtr = Marshal.AllocHGlobal(outputBuffer.Length * sizeof(short));
+            IntPtr dataPtr = Marshal.AllocHGlobal(outputBuffer.Length * sizeof(float)); // Размер памяти теперь под float
             Marshal.Copy(outputBuffer, 0, dataPtr, outputBuffer.Length);
 
             WAVEHDR wh = new WAVEHDR
             {
                 lpData = dataPtr,
-                dwBufferLength = (uint)(outputBuffer.Length * sizeof(short)),
+                dwBufferLength = (uint)(outputBuffer.Length * sizeof(float)), // Теперь sizeof(float)
                 dwBytesRecorded = 0,
                 dwUser = IntPtr.Zero,
                 dwFlags = 0,
@@ -254,6 +250,8 @@
             }
         }
 
+        // --- Инструменты генерируют значения напрямую в диапазоне от -1.0 до 1.0 ---
+
         public static void PlayPiano(int frequency, float duration = 0.3f, float release = 0.1f, float velocity = 1.0f)
         {
             if (!isInitialized) return;
@@ -261,43 +259,26 @@
             int samples = (int)(SAMPLE_RATE * duration);
             if (samples <= 0) return;
 
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
 
             float attackTime = 0.01f;
             float decayTime = 0.05f;
             float sustainLevel = 0.7f;
-            float releaseTime = Math.Min(release, duration * 0.3f); // Release не больше 30% от duration
+            float releaseTime = Math.Min(release, duration * 0.3f);
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
 
                 float envelope;
-                if (t < attackTime)
-                {
-                    envelope = t / attackTime;
-                }
-                else if (t < attackTime + decayTime)
-                {
-                    float decayT = (t - attackTime) / decayTime;
-                    envelope = 1.0f - (1.0f - sustainLevel) * decayT;
-                }
-                else if (t < duration - releaseTime)
-                {
-                    envelope = sustainLevel;
-                }
-                else
-                {
-                    float releaseT = (t - (duration - releaseTime)) / releaseTime;
-                    envelope = sustainLevel * (1.0f - releaseT);
-                }
+                if (t < attackTime) envelope = t / attackTime;
+                else if (t < attackTime + decayTime) envelope = 1.0f - (1.0f - sustainLevel) * ((t - attackTime) / decayTime);
+                else if (t < duration - releaseTime) envelope = sustainLevel;
+                else envelope = sustainLevel * (1.0f - ((t - (duration - releaseTime)) / releaseTime));
 
-                float sample = (float)Math.Sin(2 * Math.PI * frequency * t) * envelope * short.MaxValue * 0.5f * velocity;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                float sample = (float)Math.Sin(2 * Math.PI * frequency * t) * envelope * 0.5f * velocity;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -307,44 +288,36 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * duration);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
 
             float attackTime = 0.005f;
             float decayTime = 0.02f;
             float sustainLevel = 0.8f;
             float releaseTime = release;
 
+            // Накопитель фазы для чистой пилы без разрывов
+            float phase = 0f;
+            float phaseIncrement = (float)frequency / SAMPLE_RATE;
+
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
-                float saw = 2 * ((float)(t * frequency) - (float)Math.Floor(t * frequency + 0.5f));
+
+                // Генерация идеальной пилы [-1.0, 1.0]
+                float saw = 2.0f * phase - 1.0f;
+                phase += phaseIncrement;
+                if (phase >= 1.0f) phase -= 1.0f;
 
                 float envelope;
-                if (t < attackTime)
-                {
-                    envelope = t / attackTime;
-                }
-                else if (t < attackTime + decayTime)
-                {
-                    float decayT = (t - attackTime) / decayTime;
-                    envelope = 1.0f - (1.0f - sustainLevel) * decayT;
-                }
-                else if (t < duration - releaseTime)
-                {
-                    envelope = sustainLevel;
-                }
-                else
-                {
-                    float releaseT = (t - (duration - releaseTime)) / releaseTime;
-                    envelope = sustainLevel * (1.0f - releaseT);
-                }
+                if (t < attackTime) envelope = t / attackTime;
+                else if (t < attackTime + decayTime) envelope = 1.0f - (1.0f - sustainLevel) * ((t - attackTime) / decayTime);
+                else if (t < duration - releaseTime) envelope = sustainLevel;
+                else envelope = sustainLevel * (1.0f - ((t - (duration - releaseTime)) / releaseTime));
 
-                float sample = saw * envelope * short.MaxValue * 0.6f * velocity;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                // Снизили общую амплитуду до 0.25f, чтобы бас не забивал микс
+                float sample = saw * envelope * 0.4f * velocity;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -354,91 +327,40 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * duration);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
 
             float attackTime = 0.01f;
             float decayTime = 0.03f;
             float sustainLevel = 0.6f;
             float releaseTime = release;
 
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float saw1 = 2 * ((float)(t * frequency) - (float)Math.Floor(t * frequency + 0.5f));
-                float saw2 = 2 * ((float)(t * frequency * 1.01f) - (float)Math.Floor(t * frequency * 1.01f + 0.5f));
-
-                float envelope;
-                if (t < attackTime)
-                {
-                    envelope = t / attackTime;
-                }
-                else if (t < attackTime + decayTime)
-                {
-                    float decayT = (t - attackTime) / decayTime;
-                    envelope = 1.0f - (1.0f - sustainLevel) * decayT;
-                }
-                else if (t < duration - releaseTime)
-                {
-                    envelope = sustainLevel;
-                }
-                else
-                {
-                    float releaseT = (t - (duration - releaseTime)) / releaseTime;
-                    envelope = sustainLevel * (1.0f - releaseT);
-                }
-
-                float sample = (saw1 + saw2) / 2 * envelope * short.MaxValue * 0.4f * velocity;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void PlayPad(int frequency, float duration = 1.0f, float release = 0.3f, float velocity = 1.0f)
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * duration);
-            short[] buffer = new short[samples * CHANNELS];
-
-            float attackTime = 0.1f;   // Медленная атака
-            float decayTime = 0.2f;
-            float sustainLevel = 0.8f;
-            float releaseTime = release;
+            float phase1 = 0f;
+            float phase2 = 0f;
+            float phaseInc1 = (float)frequency / SAMPLE_RATE;
+            float phaseInc2 = (float)(frequency * 1.005f) / SAMPLE_RATE; // Чуть уменьшили детюн для более благородного звучания
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
 
-                float envelope;
-                if (t < attackTime)
-                {
-                    envelope = t / attackTime;
-                }
-                else if (t < attackTime + decayTime)
-                {
-                    float decayT = (t - attackTime) / decayTime;
-                    envelope = 1.0f - (1.0f - sustainLevel) * decayT;
-                }
-                else if (t < duration - releaseTime)
-                {
-                    envelope = sustainLevel;
-                }
-                else
-                {
-                    float releaseT = (t - (duration - releaseTime)) / releaseTime;
-                    envelope = sustainLevel * (1.0f - releaseT);
-                }
+                float saw1 = 2.0f * phase1 - 1.0f;
+                phase1 += phaseInc1;
+                if (phase1 >= 1.0f) phase1 -= 1.0f;
 
-                float sample = (float)Math.Sin(2 * Math.PI * frequency * t) * envelope * short.MaxValue * 0.3f * velocity;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                float saw2 = 2.0f * phase2 - 1.0f;
+                phase2 += phaseInc2;
+                if (phase2 >= 1.0f) phase2 -= 1.0f;
+
+                float envelope;
+                if (t < attackTime) envelope = t / attackTime;
+                else if (t < attackTime + decayTime) envelope = 1.0f - (1.0f - sustainLevel) * ((t - attackTime) / decayTime);
+                else if (t < duration - releaseTime) envelope = sustainLevel;
+                else envelope = sustainLevel * (1.0f - ((t - (duration - releaseTime)) / releaseTime));
+
+                // Снизили амплитуду до 0.2f
+                float sample = (saw1 + saw2) * 0.7f * envelope * 0.4f * velocity;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -448,19 +370,17 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.2f);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
                 float freq = 150 * (float)Math.Exp(-t * 20);
                 float envelope = (float)Math.Exp(-t * 15);
-                float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * short.MaxValue * 0.8f;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                // Снизили базовый пиковый уровень с 0.8 до 0.45, чтобы не клипповало при микшировании
+                float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.45f;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -470,19 +390,17 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.3f);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
                 float freq = 100 * (float)Math.Exp(-t * 15);
                 float envelope = (float)Math.Exp(-t * 10);
-                float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * short.MaxValue * 0.9f;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                // Оптимизировали громкость до 0.5f
+                float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.5f;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -492,20 +410,19 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.15f);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
             Random rand = new Random();
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
                 float envelope = (float)Math.Exp(-t * 20);
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.5f;
-                float tone = (float)Math.Sin(2 * Math.PI * 200 * t) * envelope * short.MaxValue * 0.3f;
-                int clamped = (int)(noise + tone);
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                // Сбалансировали шум и тон, снизив общую громкость снейра до 0.3f
+                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.3f;
+                float tone = (float)Math.Sin(2 * Math.PI * 200 * t) * envelope * 0.15f;
+                float sample = noise + tone;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -515,20 +432,18 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.12f);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
             Random rand = new Random();
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
                 float envelope = (float)Math.Exp(-t * 30);
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.7f;
-                float tone = (float)Math.Sin(2 * Math.PI * 250 * t) * envelope * short.MaxValue * 0.4f;
-                int clamped = (int)(noise + tone);
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.35f;
+                float tone = (float)Math.Sin(2 * Math.PI * 250 * t) * envelope * 0.2f;
+                float sample = noise + tone;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
@@ -538,186 +453,28 @@
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.05f);
-            short[] buffer = new short[samples * CHANNELS];
+            float[] buffer = new float[samples * CHANNELS];
             Random rand = new Random();
 
             for (int i = 0; i < samples; i++)
             {
                 float t = (float)i / SAMPLE_RATE;
                 float envelope = (float)Math.Exp(-t * 50);
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.4f;
-                int clamped = (int)noise;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
+                // Хэты были слишком громкими, снизили до 0.15f
+                float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.15f;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
         }
-
-        public static void PlayHiHatOpen()
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * 0.15f);
-            short[] buffer = new short[samples * CHANNELS];
-            Random rand = new Random();
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float envelope = (float)Math.Exp(-t * 25);
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.5f;
-                int clamped = (int)noise;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void PlayClap()
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * 0.2f);
-            short[] buffer = new short[samples * CHANNELS];
-            Random rand = new Random();
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float envelope = (float)Math.Exp(-t * 15);
-                if (t < 0.01f) envelope = 0;
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.6f;
-                int clamped = (int)noise;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void PlayCrash()
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * 0.5f);
-            short[] buffer = new short[samples * CHANNELS];
-            Random rand = new Random();
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float envelope = (float)Math.Exp(-t * 8);
-                float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * short.MaxValue * 0.5f;
-                int clamped = (int)noise;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void PlayLaser()
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * 0.3f);
-            short[] buffer = new short[samples * CHANNELS];
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float freq = 800 * (float)Math.Exp(-t * 10);
-                float envelope = (float)Math.Exp(-t * 15);
-                float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * short.MaxValue * 0.5f;
-                int clamped = (int)sample;
-                if (clamped > short.MaxValue) clamped = short.MaxValue;
-                if (clamped < short.MinValue) clamped = short.MinValue;
-                buffer[i * CHANNELS] = (short)clamped;
-                buffer[i * CHANNELS + 1] = (short)clamped;
-            }
-
-            PlaySample(buffer);
-        }
-        public static void PlayTone(int frequency, float duration = 0.1f)
-        {
-            if (!isInitialized) return;
-            int samples = (int)(SAMPLE_RATE * duration);
-            short[] buffer = new short[samples * CHANNELS];
-
-            for (int i = 0; i < samples; i++)
-            {
-                float t = (float)i / SAMPLE_RATE;
-                float sample = (float)Math.Sin(2 * Math.PI * frequency * t) *short.MaxValue* 0.3f;
-                short s = (short)Math.Min(32767, Math.Max(short.MinValue, sample));
-                buffer[i * CHANNELS] = s;
-                buffer[i * CHANNELS + 1] = s;
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void PlayChord(int[] frequencies, float duration = 0.2f)
-        {
-            if (!isInitialized || frequencies.Length == 0) return;
-
-            int samples = (int)(SAMPLE_RATE * duration);
-            short[] buffer = new short[samples * CHANNELS];
-
-            foreach (int freq in frequencies)
-            {
-                for (int i = 0; i < samples; i++)
-                {
-                    float t = (float)i / SAMPLE_RATE;
-                    float sample = (float)Math.Sin(2 * Math.PI * freq * t) *short.MaxValue* 0.3f / frequencies.Length;
-                    buffer[i * CHANNELS] = (short)Math.Min(32767, buffer[i * CHANNELS] + sample);
-                    buffer[i * CHANNELS + 1] = (short)Math.Min(32767, buffer[i * CHANNELS + 1] + sample);
-                }
-            }
-
-            PlaySample(buffer);
-        }
-
-        public static void SetVolume(float volume)
-        {
-            if (!isInitialized || hWaveOut == IntPtr.Zero) return;
-            volume = Math.Max(0, Math.Min(1, volume));
-            uint vol = (uint)(volume * 65535);
-            uint stereoVol = (vol << 16) | vol;
-            waveOutSetVolume(hWaveOut, stereoVol);
-        }
-
-        public static void Cleanup()
-        {
-            if (hWaveOut != IntPtr.Zero)
-            {
-                waveOutReset(hWaveOut);
-
-                for (int i = 0; i < NUM_BUFFERS; i++)
-                {
-                    if (bufferInUse[i])
-                    {
-                        try
-                        {
-                            WAVEHDR wh = Marshal.PtrToStructure<WAVEHDR>(bufferWhPtrs[i]);
-                            waveOutUnprepareHeader(hWaveOut, bufferWhPtrs[i], Marshal.SizeOf(wh));
-                            Marshal.FreeHGlobal(wh.lpData);
-                            Marshal.FreeHGlobal(bufferWhPtrs[i]);
-                        }
-                        catch { }
-                    }
-                }
-
-                waveOutClose(hWaveOut);
-                hWaveOut = IntPtr.Zero;
-            }
-            voices.Clear();
-            isInitialized = false;
-        }
+        public static void PlayHiHatOpen() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.15f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 25); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+        public static void PlayClap() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.2f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 15); if (t < 0.01f) envelope = 0; float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.6f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+        public static void PlayCrash() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.5f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 8); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+        public static void PlayLaser() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.3f); float[] buffer = new float[samples * CHANNELS]; for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float freq = 800 * (float)Math.Exp(-t * 10); float envelope = (float)Math.Exp(-t * 15); float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+        public static void PlayTone(int frequency, float duration = 0.1f) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * duration); float[] buffer = new float[samples * CHANNELS]; for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float sample = (float)Math.Sin(2 * Math.PI * frequency * t) * 0.3f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+        public static void PlayChord(int[] frequencies, float duration = 0.2f) { if (!isInitialized || frequencies.Length == 0) return; int samples = (int)(SAMPLE_RATE * duration); float[] buffer = new float[samples * CHANNELS]; foreach (int freq in frequencies) { for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float sample = (float)Math.Sin(2 * Math.PI * freq * t) * 0.3f / frequencies.Length; buffer[i * CHANNELS] += sample; buffer[i * CHANNELS + 1] += sample; } } PlaySample(buffer); }
+        public static void SetVolume(float volume) { if (!isInitialized || hWaveOut == IntPtr.Zero) return; volume = Math.Max(0, Math.Min(1, volume)); uint vol = (uint)(volume * 65535); uint stereoVol = (vol << 16) | vol; waveOutSetVolume(hWaveOut, stereoVol); }
+        public static void Cleanup() { if (hWaveOut != IntPtr.Zero) { waveOutReset(hWaveOut); for (int i = 0; i < NUM_BUFFERS; i++) { if (bufferInUse[i]) { try { WAVEHDR wh = Marshal.PtrToStructure<WAVEHDR>(bufferWhPtrs[i]); waveOutUnprepareHeader(hWaveOut, bufferWhPtrs[i], Marshal.SizeOf(wh)); Marshal.FreeHGlobal(wh.lpData); Marshal.FreeHGlobal(bufferWhPtrs[i]); } catch { } } } waveOutClose(hWaveOut); hWaveOut = IntPtr.Zero; } voices.Clear(); isInitialized = false; }
     }
 }

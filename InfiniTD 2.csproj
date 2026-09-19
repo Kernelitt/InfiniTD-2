@@ -152,6 +152,7 @@
     <Compile Include="Framework\Audio\MusicPlayer.cs" />
     <Compile Include="Framework\Font.cs" />
     <Compile Include="Framework\GL.cs" />
+    <Compile Include="Framework\Graphics.cs" />
     <Compile Include="Framework\Input.cs" />
     <Compile Include="Framework\ModManager.cs" />
     <Compile Include="Framework\NativeWindow.cs" />

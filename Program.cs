@@ -28,9 +28,14 @@ namespace InfiniTD_2
 
             NativeWindow.Create("InfiniTD 2", 1600, 900);
             GL.Init();
+            Console.WriteLine($"OpenGL Version: {GL.GetString(GL.GL_VERSION)}");
+            Console.WriteLine($"GLSL Version: {GL.GetString(GL.GL_SHADING_LANGUAGE_VERSION)}");
+            Console.WriteLine($"Vendor: {GL.GetString(0x1F00)}"); // GL_VENDOR
+            Console.WriteLine($"Renderer: {GL.GetString(0x1F01)}"); // GL_RENDERER
 #if !NO_MOD_SUPPORT
             Framework.ModManager.InitAndLoadMods("mods/");
 #endif
+
             MainApp.Start();
 
             NativeWindow.Cleanup();

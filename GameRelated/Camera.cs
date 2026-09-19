@@ -55,9 +55,9 @@ namespace InfiniTD_2.GameRelated
 
             // Зум колёсиком мыши
             if (Input.IsKeyDown((uint)'C'))
-                ZoomIn(0.1f);
+                ZoomIn(0.01f);
             if (Input.IsKeyDown((uint)'X'))
-                ZoomOut(0.1f);
+                ZoomOut(0.01f);
 
 
             // Ограничение камеры (опционально)

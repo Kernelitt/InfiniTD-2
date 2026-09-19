@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
 {
+    [Serializable]
     public class Enemy
     {
         public float X { get; set; }
@@ -98,7 +100,7 @@ namespace InfiniTD_2.GameRelated
             }
         }
     }
-
+    [Serializable]
     public struct Vector2
     {
         public short X;

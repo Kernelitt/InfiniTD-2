@@ -1,4 +1,5 @@
-﻿using System;
+﻿using InfiniTD_2.Framework;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -51,7 +52,7 @@ namespace InfiniTD_2
             int textureHeight = CharHeight;
 
             using (var bitmap = new Bitmap(textureWidth, textureHeight, PixelFormat.Format32bppArgb))
-            using (var gfx = Graphics.FromImage(bitmap))
+            using (var gfx = System.Drawing.Graphics.FromImage(bitmap))
             {
                 gfx.Clear(Color.Transparent);
 
@@ -181,65 +182,32 @@ namespace InfiniTD_2
         {
             if (string.IsNullOrEmpty(text)) return;
 
-            float glX = (x / 1600) * 2 - 1f;
-            float glY = -(y / 900) * 2  + 1f;
 
-            GL.Enable(GL.GL_BLEND);
-            GL.BlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+             // СНАЧАЛА устанавливаем текстуру
 
-            GL.UseProgram(shaderProgram);
-            GL.ActiveTexture(GL.GL_TEXTURE0);
-            GL.BindTexture(GL.GL_TEXTURE_2D, fontTexture);
-
-            GL.BindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-
-            float currentX = glX;
-            float currentY = glY;
+            float currentX = x;
+            float currentY = y;
 
             foreach (char ch in text)
             {
                 if (ch < FirstChar || ch > LastChar) continue;
-
+                Graphics.SetTexture(fontTexture);
                 int charIndex = ch - FirstChar;
                 float u0 = texCoords[charIndex * 4 + 0];
                 float v0 = texCoords[charIndex * 4 + 1];
                 float u1 = texCoords[charIndex * 4 + 2];
                 float v1 = texCoords[charIndex * 4 + 3];
 
-                float w = (CharWidth * scale / 1600);
-                float h = (CharHeight * scale / 900);
+                float w = CharWidth * scale / 2;
+                float h = CharHeight * scale / 2;
 
-                float[] vertices = new float[]
-                {
-                    currentX,     currentY - h,    u0, v1,  r, g, b, a,
-                    currentX + w, currentY - h,    u1, v1,  r, g, b, a,
-                    currentX + w, currentY,    u1, v0,  r, g, b, a,
-                    currentX,     currentY,    u0, v0,  r, g, b, a,
-                };
-
-                IntPtr dataPtr = Marshal.AllocHGlobal(vertices.Length * sizeof(float));
-                Marshal.Copy(vertices, 0, dataPtr, vertices.Length);
-                GL.BufferData(GL.GL_ARRAY_BUFFER, new IntPtr(vertices.Length * sizeof(float)), dataPtr, GL.GL_STATIC_DRAW);
-                Marshal.FreeHGlobal(dataPtr);
-
-                GL.EnableVertexAttribArray(0);
-                GL.EnableVertexAttribArray(1);
-                GL.EnableVertexAttribArray(2);
-
-                GL.VertexAttribPointer(0, 2, GL.GL_FLOAT, false, 8 * sizeof(float), IntPtr.Zero);
-                GL.VertexAttribPointer(1, 2, GL.GL_FLOAT, false, 8 * sizeof(float), new IntPtr(2 * sizeof(float)));
-                GL.VertexAttribPointer(2, 4, GL.GL_FLOAT, false, 8 * sizeof(float), new IntPtr(4 * sizeof(float)));
-
-                GL.DrawArrays(GL.GL_TRIANGLE_FAN, 0, 4);
-
-                GL.DisableVertexAttribArray(0);
-                GL.DisableVertexAttribArray(1);
-                GL.DisableVertexAttribArray(2);
-
+                Primitives.DrawTexturedQuad(currentX, currentY, w, h, u0, v0, u1, v1, r, g, b, a);
+                Graphics.Flush();
                 currentX += w * 0.7f;
             }
 
-            GL.Disable(GL.GL_BLEND);
+            
+            Graphics.ResetTexture();
         }
 
         public void Dispose()

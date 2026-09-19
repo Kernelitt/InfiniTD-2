@@ -12,6 +12,7 @@ namespace InfiniTD_2
         public const uint GL_DEPTH_BUFFER_BIT = 0x00000100;
         public const uint GL_FLOAT = 0x1406;
         public const uint GL_TRIANGLES = 0x0004;
+        public const uint GL_QUADS = 0x0007;
         public const uint GL_ARRAY_BUFFER = 0x8892;
         public const uint GL_STATIC_DRAW = 0x88E4;
         public const uint GL_FRAGMENT_SHADER = 0x8B30;
@@ -37,6 +38,9 @@ namespace InfiniTD_2
         public const uint GL_BLEND = 0x0BE2;
         public const uint GL_SRC_ALPHA = 0x0302;
         public const uint GL_ONE_MINUS_SRC_ALPHA = 0x0303;
+        public const uint GL_VERSION = 0x1F02;
+        public const uint GL_SHADING_LANGUAGE_VERSION = 0x8B8C;
+        public const uint GL_DYNAMIC_DRAW = 0x88E8;
         // --- Делегаты функций OpenGL ---
         delegate void GlClearColorDelegate(float red, float green, float blue, float alpha);
         delegate void GlClearDelegate(uint mask);
@@ -75,7 +79,15 @@ namespace InfiniTD_2
         delegate void GlTexParameteriDelegate(uint target, uint pname, int param);
         delegate void GlActiveTextureDelegate(uint texture);
         delegate void GlDeleteTexturesDelegate(int n, ref int textures);
-
+        delegate IntPtr GlGetStringDelegate(uint name);
+        delegate void GlColor4fDelegate(float r, float g, float b, float a);
+        delegate void GlBeginDelegate(uint mode);
+        delegate void GlVertex2fDelegate(float x, float y);
+        delegate void GlEndDelegate();
+        delegate void GlGenVertexArraysDelegate(int n, out int arrays);
+        delegate void GlBindVertexArrayDelegate(int array);
+        delegate void GlBufferSubDataDelegate(uint target, IntPtr offset, IntPtr size, IntPtr data);
+        delegate void GlDeleteBuffersDelegate(int n, ref int buffers);
         // --- Функции OpenGL ---
         static GlClearColorDelegate glClearColor;
         static GlClearDelegate glClear;
@@ -114,6 +126,15 @@ namespace InfiniTD_2
         static GlTexParameteriDelegate glTexParameteri;
         static GlActiveTextureDelegate glActiveTexture;
         static GlDeleteTexturesDelegate glDeleteTextures;
+        static GlGetStringDelegate glGetString;
+        static GlColor4fDelegate glColor4f;
+        static GlBeginDelegate glBegin;
+        static GlVertex2fDelegate glVertex2f;
+        static GlGenVertexArraysDelegate glGenVertexArrays;
+        static GlBindVertexArrayDelegate glBindVertexArray;
+        static GlEndDelegate glEnd;
+        static GlBufferSubDataDelegate glBufferSubData;
+        static GlDeleteBuffersDelegate glDeleteBuffers;
 
         [DllImport("opengl32.dll", CharSet = CharSet.Ansi)]
         static extern IntPtr wglGetProcAddress(string procName);
@@ -185,6 +206,15 @@ namespace InfiniTD_2
             glEnable = GetDelegate<GlEnableDelegate>("glEnable");
             glDisable = GetDelegate<GlDisableDelegate>("glDisable");
             glBlendFunc = GetDelegate<GlBlendFuncDelegate>("glBlendFunc");
+            glGetString = GetDelegate<GlGetStringDelegate>("glGetString");
+            glColor4f = GetDelegate<GlColor4fDelegate>("glColor4f");
+            glBegin = GetDelegate<GlBeginDelegate>("glBegin");
+            glVertex2f = GetDelegate<GlVertex2fDelegate>("glVertex2f");
+            glEnd = GetDelegate<GlEndDelegate>("glEnd");
+            glGenVertexArrays = GetDelegate<GlGenVertexArraysDelegate>("glGenVertexArrays");
+            glBindVertexArray = GetDelegate<GlBindVertexArrayDelegate>("glBindVertexArray");
+            glBufferSubData = GetDelegate<GlBufferSubDataDelegate>("glBufferSubData");
+            glDeleteBuffers = GetDelegate<GlDeleteBuffersDelegate>("glDeleteBuffers");
 
             IsInitialized = true;
         }
@@ -209,7 +239,13 @@ namespace InfiniTD_2
             glGenBuffers(1, out int buffer);
             return buffer;
         }
+        public static string GetString(uint name)
+        {
+            if (glGetString == null) return "NULL";
 
+            IntPtr ptr = glGetString(name);
+            return ptr == IntPtr.Zero ? "ZERO" : Marshal.PtrToStringAnsi(ptr);
+        }
         public static void BindBuffer(uint target, int buffer) => glBindBuffer(target, buffer);
         public static void BufferData(uint target, IntPtr size, IntPtr data, uint usage) => glBufferData(target, size, data, usage);
 
@@ -223,7 +259,13 @@ namespace InfiniTD_2
         public static void ShaderSource(int shader, string source) => glShaderSource(shader, 1, ref source, IntPtr.Zero);
         
         public static void CompileShader(int shader) => glCompileShader(shader);
-
+        public static int GenVertexArray()
+        {
+            glGenVertexArrays(1, out int vao);
+            return vao;
+        }
+        public static void DeleteBuffer(int buffer) => glDeleteBuffers(1, ref buffer);
+        public static void BindVertexArray(int vao) => glBindVertexArray(vao);
         public static void GetShaderiv(int shader, uint pname, out int @params) => glGetShaderiv(shader, pname, out @params);
 
         public static string GetShaderInfoLog(int shader)
@@ -249,7 +291,8 @@ namespace InfiniTD_2
             glGetProgramInfoLog(program, logLength, out _, log);
             return log.ToString();
         }
-
+        public static void BufferSubData(uint target, IntPtr offset, IntPtr size, IntPtr data) =>
+    glBufferSubData(target, offset, size, data);
         public static void UseProgram(int program) => glUseProgram(program);
         public static int GetUniformLocation(int program, string name) => glGetUniformLocation(program, name);
         public static void Uniform1f(int location, float v0) => glUniform1f(location, v0);
@@ -303,5 +346,10 @@ namespace InfiniTD_2
 
             return program;
         }
+
+        public static void Color4(float r, float g, float b, float a) => glColor4f(r, g, b, a);
+        public static void Begin(uint mode) => glBegin(mode);
+        public static void Vertex2(float x, float y) => glVertex2f(x, y);
+        public static void End() => glEnd();
     }
 }

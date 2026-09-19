@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -10,7 +11,6 @@ namespace InfiniTD_2.GameRelated
         private static byte selectedTileId = 1;
         private static Camera camera;
         private static FontInstance editorFont;
-        private static FontInstance iconsFont;
         private static bool firstTimeInEditor = true;
 
         // Палитра тайлов
@@ -25,7 +25,6 @@ namespace InfiniTD_2.GameRelated
         {
             camera = new Camera();
             editorFont = FontManager.GetFont("Consolas", 60, 60, 84);
-            iconsFont = FontManager.GetFont("Webdings", 48, 72, 72);
         }
 
         public static void OpenEditor()
@@ -65,19 +64,19 @@ namespace InfiniTD_2.GameRelated
             camera.Update();
 
             // Выбор тайла клавишами 1-4 (используем IsKeyPressed для однократного нажатия)
-            if (Input.IsKeyPressed((uint)'1')) selectedTileId = 1;
-            if (Input.IsKeyPressed((uint)'2')) selectedTileId = 2;
-            if (Input.IsKeyPressed((uint)'3')) selectedTileId = 3;
-            if (Input.IsKeyPressed((uint)'4')) selectedTileId = 4;
+            if (Input.IsKeyPressed('1')) selectedTileId = 1;
+            if (Input.IsKeyPressed('2')) selectedTileId = 2;
+            if (Input.IsKeyPressed('3')) selectedTileId = 3;
+            if (Input.IsKeyPressed('4')) selectedTileId = 4;
 
             // Сохранение на S
-            if (Input.IsKeyPressed((uint)'J'))
+            if (Input.IsKeyPressed('J'))
             {
                 SaveMap();
             }
 
             // Загрузка на L
-            if (Input.IsKeyPressed((uint)'L'))
+            if (Input.IsKeyPressed('L'))
             {
                 LoadMap();
             }

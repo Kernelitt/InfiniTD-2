@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -16,17 +17,24 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 72, 108);
         [NonSerialized] private readonly List<Enemy> enemies = new List<Enemy>();
         [NonSerialized] private float spawnTimer = 0f;
-        [NonSerialized] private readonly Vector2[] currentPath;
+        [NonSerialized] private Vector2[] currentPath;
         [NonSerialized] private readonly List<Tower> towers = new List<Tower>();
         [NonSerialized] private readonly List<Projectile> projectiles = new List<Projectile>();
         [NonSerialized] private Tower selectedTower = null;
         [NonSerialized] private short selectedTowerType = 1;
         [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 100, 150 };
-
+        [NonSerialized]
+        private UISlider speedSlider = new UISlider(140, 850, 300, 10)
+        {
+            OnChanged = (Value) => { SimulationSpeed = Value;},
+            MinValue = 0.1f,
+            MaxValue = 5f,
+            Value = 1f
+        };
         // Волны
         [NonSerialized] private int CurrentWave = 0;
         [NonSerialized] private float WaveTimer = 0f;
-        [NonSerialized] private readonly float WaveInterval = 10f;
+        [NonSerialized] private readonly float WaveInterval = 20f;
         [NonSerialized] private int EnemiesPerWave = 5;
         [NonSerialized] private float EnemyHealthMultiplier = 1f;
         [NonSerialized] private float SpawnInterval = 2f;
@@ -34,6 +42,7 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private bool IsWaveActive = false;
         [NonSerialized] private static float saveTimer = 0f;
         [NonSerialized] private const float SAVE_INTERVAL = 15f;
+        [NonSerialized] private static float SimulationSpeed = 1f;
 
         // Сохраняемые данные
         [Serializable]
@@ -126,9 +135,9 @@ namespace InfiniTD_2.GameRelated
             EnemiesSpawned = 0;
             spawnTimer = 0f;
 
-            EnemiesPerWave = 5 + CurrentWave * 2;
-            EnemyHealthMultiplier = 1f + (float)Math.Pow(1.15, CurrentWave);
-            SpawnInterval = Math.Max(0.3f, 2f - CurrentWave * 0.1f);
+            EnemiesPerWave = 5 + (int)Math.Sqrt(CurrentWave) * 2;
+            EnemyHealthMultiplier = 1f + (float)Math.Pow(1.15, CurrentWave) / 3;
+            SpawnInterval = Math.Max(0.3f, 2f - CurrentWave * 0.01f);
         }
 
         public GameState GetSaveData()
@@ -205,6 +214,9 @@ namespace InfiniTD_2.GameRelated
             selectedTowerType = state.selectedTowerType;
             currentMap = state.usedMap;
 
+            var (portal, basePos) = Pathfinding.FindSpawnAndBase(currentMap);
+            currentPath = Pathfinding.FindPath(currentMap, portal, basePos);
+
             enemies.Clear();
             foreach (var enemyState in state.Enemies)
             {
@@ -213,7 +225,8 @@ namespace InfiniTD_2.GameRelated
                     X = enemyState.X,
                     Y = enemyState.Y,
                     Health = enemyState.Health,
-                    PathIndex = enemyState.PathIndex
+                    PathIndex = enemyState.PathIndex,
+                    path = currentPath 
                 };
                 enemies.Add(enemy);
             }
@@ -232,15 +245,23 @@ namespace InfiniTD_2.GameRelated
                 var proj = new Projectile(projState.X, projState.Y, projState.Enemy, projState.Damage);
                 projectiles.Add(proj);
             }
+
         }
 
         public void Update()
         {
             camera.Update();
-            UpdateWaves((float)MainApp.DeltaTime);
+            speedSlider.Update();
+            if (BaseHP <= 0)
+            {
+                SimulationSpeed = 0;
+            }
+            float DeltaTime = (float)MainApp.DeltaTime * SimulationSpeed;
+
+            UpdateWaves(DeltaTime);
             if (IsWaveActive)
             {
-                spawnTimer += (float)MainApp.DeltaTime;
+                spawnTimer += DeltaTime;
                 if (spawnTimer >= SpawnInterval && EnemiesSpawned < EnemiesPerWave)
                 {
                     spawnTimer = 0f;
@@ -251,7 +272,7 @@ namespace InfiniTD_2.GameRelated
                     }
                 }
 
-                if (EnemiesSpawned >= EnemiesPerWave && enemies.Count == 0)
+                if (EnemiesSpawned >= EnemiesPerWave)
                 {
                     IsWaveActive = false;
                     CurrentWave++;
@@ -261,7 +282,7 @@ namespace InfiniTD_2.GameRelated
 
             for (int i = 0; i < enemies.Count; i++)
             {
-                enemies[i].Update((float)MainApp.DeltaTime);
+                enemies[i].Update(DeltaTime);
 
                 if (!enemies[i].IsActive && enemies[i].PathIndex >= enemies[i].path.Length)
                 {
@@ -271,11 +292,11 @@ namespace InfiniTD_2.GameRelated
 
             foreach (var tower in towers)
             {
-                tower.Update(enemies, (float)MainApp.DeltaTime, projectiles);
+                tower.Update(enemies, DeltaTime, projectiles);
             }
             foreach (var projectile in projectiles)
             {
-                projectile.Update((float)MainApp.DeltaTime);
+                projectile.Update(DeltaTime);
             }
             projectiles.RemoveAll(p => !p.IsActive);
 
@@ -283,15 +304,8 @@ namespace InfiniTD_2.GameRelated
             if (Input.IsKeyPressed('2')) selectedTowerType = 2;
             if (Input.IsKeyPressed('3')) selectedTowerType = 3;
 
-            if (Input.IsKeyDown('Q'))
-            {
-                HandleTowerPlacement();
-            }
-
-            if (Input.IsKeyPressed('E'))
-            {
-                HandleTowerMenu();
-            }
+            if (Input.IsKeyDown('Q')) HandleTowerPlacement();
+            if (Input.IsKeyPressed('E')) HandleTowerMenu();
 
             if (selectedTower != null && selectedTower.ShowMenu)
             {
@@ -305,17 +319,11 @@ namespace InfiniTD_2.GameRelated
 
             foreach (var en in enemies)
             {
-                if (!en.IsActive)
-                    Money += 12;
+                if (!en.IsActive) Money += 12;
             }
             enemies.RemoveAll(e => !e.IsActive);
 
-            if (BaseHP <= 0)
-            {
-                // Game Over
-            }
-
-            saveTimer += (float)MainApp.DeltaTime;
+            saveTimer += DeltaTime;
             if (saveTimer >= SAVE_INTERVAL)
             {
                 saveTimer = 0f;
@@ -449,6 +457,7 @@ namespace InfiniTD_2.GameRelated
             {
                 gameFont.DrawText($"Next wave: {WaveInterval - WaveTimer:F1}s", 10, 740, 0.6f, 0.8f, 0.8f, 0.8f);
             }
+            speedSlider.Draw(gameFont);
         }
     }
 }

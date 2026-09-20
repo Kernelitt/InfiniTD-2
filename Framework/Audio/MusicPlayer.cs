@@ -112,7 +112,7 @@
         private static readonly Dictionary<string, float> channelMaxTimes = new Dictionary<string, float>();
         private static readonly Dictionary<string, float> channelVolumes = new Dictionary<string, float>();
 
-
+        private static readonly Random random = new Random();
         public static void Init()
         {
             channels.Clear();
@@ -376,7 +376,25 @@
                 piano.AddNote(100, 16.000f + i * 32, 8f, "lead", 4.2f, 0.2f);
                 piano.AddNote(140, 24.00f  + i * 32, 8f, "lead", 4.2f, 0.2f);
             }
-            Play("bgm",90f,true);
+            Play("bgm", 90f, true);
+        }
+
+        public static void PlayShootSound()
+        {
+            int sfx_num = random.Next();
+            Track sound = CreateTrack("sfx" + sfx_num);
+            sound.AddLaser(0.001f, 0.3f);
+            Play("sfx"+sfx_num, 90f, false);
+            SetChannelVolume("sfx" + sfx_num, 0.5f);
+        }
+        public static void PlayExplodeSound()
+        {
+            int sfx_num = random.Next();
+            Track sound = CreateTrack("sfx" + sfx_num);
+            sound.AddSnare(0.001f, 0.3f);
+            sound.AddCrash(0.001f, 0.3f);
+            Play("sfx" + sfx_num, 90f, false);
+            SetChannelVolume("sfx" + sfx_num, 0.5f);
         }
     }
 

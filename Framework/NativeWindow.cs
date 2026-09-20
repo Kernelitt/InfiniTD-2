@@ -20,7 +20,6 @@ namespace InfiniTD_2
         const uint WM_KEYDOWN = 0x0100;
 
         const int VK_F11 = 0x7A;
-        const int VK_ESCAPE = 0x1B;
 
         // --- Форматы пикселей OpenGL ---
         const int PFD_DRAW_TO_WINDOW = 4;

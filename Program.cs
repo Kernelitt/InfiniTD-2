@@ -14,7 +14,7 @@ namespace InfiniTD_2
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        public const string AppVersion = "Pre-Alpha 1.4";
+        public const string AppVersion = "Pre-Alpha 1.5";
 
         [STAThread]
         static void Main(string[] args)
@@ -29,7 +29,6 @@ namespace InfiniTD_2
 
             NativeWindow.Create("InfiniTD 2", 1600, 900);
             GL.Init();
-            GL.Viewport(0, 0, 1600, 900);
 
             Console.WriteLine($"OpenGL Version: {GL.GetString(GL.GL_VERSION)}");
             Console.WriteLine($"GLSL Version: {GL.GetString(GL.GL_SHADING_LANGUAGE_VERSION)}");

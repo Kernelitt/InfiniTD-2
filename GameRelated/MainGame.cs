@@ -15,18 +15,19 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
         [NonSerialized] private readonly FontInstance iconsFont2 = FontManager.GetFont("Wingdings", 72, 108, 108);
         [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 72, 108);
+        [NonSerialized] private readonly FontInstance buttonFont = FontManager.GetFont("Arial", 32, 32, 48);
         [NonSerialized] private readonly List<Enemy> enemies = new List<Enemy>();
         [NonSerialized] private float spawnTimer = 0f;
         [NonSerialized] private Vector2[] currentPath;
         [NonSerialized] private readonly List<Tower> towers = new List<Tower>();
         [NonSerialized] private readonly List<Projectile> projectiles = new List<Projectile>();
         [NonSerialized] private Tower selectedTower = null;
-        [NonSerialized] private short selectedTowerType = 1;
-        [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 100, 150 };
+        [NonSerialized] private byte selectedTowerType = 1;
+        [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 120};
         [NonSerialized]
-        private UISlider speedSlider = new UISlider(140, 850, 300, 10)
+        private UISlider speedSlider = new UISlider(140, 850, 300, 20)
         {
-            OnChanged = (Value) => { SimulationSpeed = Value;},
+            OnChanged = (Value) => { SimulationSpeed = Value; },
             MinValue = 0.1f,
             MaxValue = 5f,
             Value = 1f
@@ -58,7 +59,7 @@ namespace InfiniTD_2.GameRelated
             public int EnemiesSpawned;
             public bool IsWaveActive;
             public float spawnTimer;
-            public short selectedTowerType;
+            public byte selectedTowerType;
             public Map usedMap;
             // Состояние врагов
             public EnemyState[] Enemies;
@@ -84,8 +85,13 @@ namespace InfiniTD_2.GameRelated
         {
             public short X;
             public short Y;
-            public int Cost;
             public int TargetingMode;
+            public byte TowerType; // 1=Basic, 2=Rapid, 3=Sniper, 4=Splash
+            public int Level;
+            public float Damage;
+            public float Range;
+            public float FireRate;
+            public int UpgradeCost;
         }
 
         [Serializable]
@@ -95,6 +101,8 @@ namespace InfiniTD_2.GameRelated
             public float Y;
             public Enemy Enemy;
             public float Damage;
+            public bool IsSplash;
+            public float SplashRadius;
         }
 
         public MainGame(string mapPath = null)
@@ -179,24 +187,48 @@ namespace InfiniTD_2.GameRelated
                 {
                     X = towers[i].X,
                     Y = towers[i].Y,
-                    Cost = towers[i].Cost,
-                    TargetingMode = (int)towers[i].TargetingMode
+                    UpgradeCost = towers[i].UpgradeCost,
+                    TargetingMode = (int)towers[i].TargetingMode,
+                    TowerType = GetTowerType(towers[i]),
+                    Level = towers[i].Level,
+                    Damage = towers[i].Damage,
+                    Range = towers[i].Range,
+                    FireRate = towers[i].FireRate
+
                 };
             }
 
             for (int i = 0; i < projectiles.Count; i++)
             {
+                var proj = projectiles[i];
                 state.Projectiles[i] = new ProjectileState
                 {
-                    X = projectiles[i].X,
-                    Y = projectiles[i].Y,
-                    Enemy = projectiles[i].Target,
-                    Damage = projectiles[i].Damage
+                    X = proj.X,
+                    Y = proj.Y,
+                    Enemy = proj.Target,
+                    Damage = proj.Damage
                 };
             }
             state.usedMap = currentMap;
 
             return state;
+        }
+
+        private byte GetTowerType(Tower tower)
+        {
+            if (tower is BasicTower) return 1;
+            if (tower is SniperTower) return 2;
+            return 1;
+        }
+
+        private Tower CreateTower(byte type, short x, short y)
+        {
+            switch (type)
+            {
+                case 1: return new BasicTower(x, y);
+                case 2: return new SniperTower(x, y);
+                default: return new BasicTower(x, y);
+            }
         }
 
         public void LoadFromData(GameState state)
@@ -226,7 +258,7 @@ namespace InfiniTD_2.GameRelated
                     Y = enemyState.Y,
                     Health = enemyState.Health,
                     PathIndex = enemyState.PathIndex,
-                    path = currentPath 
+                    path = currentPath
                 };
                 enemies.Add(enemy);
             }
@@ -234,15 +266,23 @@ namespace InfiniTD_2.GameRelated
             towers.Clear();
             foreach (var towerState in state.Towers)
             {
-                var tower = new Tower(towerState.X, towerState.Y, towerState.Cost);
+                var tower = CreateTower(towerState.TowerType, towerState.X, towerState.Y);
                 tower.TargetingMode = (TargetingMode)towerState.TargetingMode;
+                tower.Level = towerState.Level;
+                tower.Damage = towerState.Damage;
+                tower.Range = towerState.Range;
+                tower.FireRate = towerState.FireRate;
+                tower.UpgradeCost = towerState.UpgradeCost;
+                if (tower.Level >= tower.MaxLevel) tower.CanUpgrade = false;
                 towers.Add(tower);
             }
 
             projectiles.Clear();
             foreach (var projState in state.Projectiles)
             {
-                var proj = new Projectile(projState.X, projState.Y, projState.Enemy, projState.Damage);
+                Projectile proj;
+                proj = new Projectile(projState.X, projState.Y, projState.Enemy, projState.Damage);
+                
                 projectiles.Add(proj);
             }
 
@@ -300,21 +340,30 @@ namespace InfiniTD_2.GameRelated
             }
             projectiles.RemoveAll(p => !p.IsActive);
 
+            // Выбор типа башни
             if (Input.IsKeyPressed('1')) selectedTowerType = 1;
             if (Input.IsKeyPressed('2')) selectedTowerType = 2;
-            if (Input.IsKeyPressed('3')) selectedTowerType = 3;
 
             if (Input.IsKeyDown('Q')) HandleTowerPlacement();
-            if (Input.IsKeyPressed('E')) HandleTowerMenu();
+            if (Input.IsKeyDown('E')) HandleTowerMenu();
 
+            // В Update() добавить callback на улучшение:
             if (selectedTower != null && selectedTower.ShowMenu)
             {
-                if (Input.IsKeyPressed('4')) selectedTower.SetTargetingMode(0);
-                if (Input.IsKeyPressed('5')) selectedTower.SetTargetingMode(1);
-                if (Input.IsKeyPressed('6')) selectedTower.SetTargetingMode(2);
-                if (Input.IsKeyPressed('7')) selectedTower.SetTargetingMode(3);
-                if (Input.IsKeyPressed('8')) selectedTower.SetTargetingMode(4);
-                if (Input.IsKeyPressed('9')) selectedTower.SetTargetingMode(5);
+                selectedTower.UpdateButtons();
+
+                // Установить callback для кнопки улучшения
+                if (selectedTower.upgradeButton != null)
+                {
+                    selectedTower.upgradeButton.OnClick = () =>
+                    {
+                        if (Money >= selectedTower.UpgradeCost)
+                        {
+                            Money -= selectedTower.UpgradeCost;
+                            selectedTower.Upgrade();
+                        }
+                    };
+                }
             }
 
             foreach (var en in enemies)
@@ -363,10 +412,11 @@ namespace InfiniTD_2.GameRelated
             if (Money >= cost)
             {
                 Money -= cost;
-                towers.Add(new Tower((short)tileX, (short)tileY, cost));
+                towers.Add(CreateTower(selectedTowerType, (short)tileX, (short)tileY));
             }
         }
 
+        // В HandleTowerMenu() добавить обновление кнопок:
         private void HandleTowerMenu()
         {
             float worldMouseX = (Input.VirtualMouseX / camera.Zoom) + camera.X;
@@ -386,7 +436,15 @@ namespace InfiniTD_2.GameRelated
                     break;
                 }
             }
+
+            // Обновляем кнопки выбранной башни
+            if (selectedTower != null && selectedTower.ShowMenu)
+            {
+                selectedTower.UpdateButtons();
+            }
         }
+
+
 
         public void Draw()
         {
@@ -431,7 +489,7 @@ namespace InfiniTD_2.GameRelated
             }
             foreach (var tower in towers)
             {
-                tower.Draw(camera, gameFont);
+                tower.Draw(camera, buttonFont);
             }
             foreach (var enemy in enemies)
             {
@@ -449,8 +507,13 @@ namespace InfiniTD_2.GameRelated
             iconsFont2.DrawText("h", 10, 115, 1, 0.2f, 0.2f, 1);
             gameFont.DrawText(CurrentWave.ToString(), 50, 120, 1);
             gameFont.DrawText($"Enemies: {enemies.Count}", 10, 800, 0.5f, 1f, 1f, 1f);
-            gameFont.DrawText($"Tower: {selectedTowerType} (Cost: {towerCosts[selectedTowerType]})", 10, 150, 0.5f, 0.8f, 0.8f, 0.8f);
-            gameFont.DrawText("Q: Place Tower, E: Tower Menu (in menu press 4,5,6,7,8,9 to change priority)", 10, 680, 0.4f, 0.6f, 0.6f, 0.6f);
+
+            // Отображение доступных башен
+            gameFont.DrawText("Towers: 1=Basic($50), 2=Sniper($120)", 10, 150, 0.4f, 0.8f, 0.8f, 0.8f);
+            gameFont.DrawText($"Selected: {selectedTowerType}", 10, 180, 0.5f, 1f, 1f, 0.5f);
+
+            gameFont.DrawText("Q: Place Tower, E: Tower Menu", 10, 680, 0.4f, 0.6f, 0.6f, 0.6f);
+
             if (IsWaveActive)
             {
                 gameFont.DrawText($"Enemies: {EnemiesSpawned}/{EnemiesPerWave}", 10, 740, 0.6f, 1f, 1f, 1f);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using InfiniTD_2.Framework;
+using InfiniTD_2.Framework.Audio;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -37,6 +38,7 @@ namespace InfiniTD_2.GameRelated
             {
                 // Достиг базы
                 IsActive = false;
+                MusicPlayer.PlayExplodeSound();
                 return;
             }
 

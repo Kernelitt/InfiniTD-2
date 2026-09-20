@@ -16,14 +16,24 @@ namespace InfiniTD_2.GameRelated
     public static class MainMenu
     {
         public static MenuScenes CurrentScene = MenuScenes.Main;
-        private static readonly FontInstance defaultFont = FontManager.GetFont("Consolas", 72, 72, 108);
+        public static readonly FontInstance defaultFont = FontManager.GetFont("Consolas", 72, 72, 108);
         private static readonly FontInstance buttonFont = FontManager.GetFont("Cambria", 48, 48, 72);
         private static readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 100, 108, 108);
+
+        // Main menu
         private static readonly UIButton playButton = new UIButton(1200, 600, 380, 60, "Play")
         {
             OnClick = () => { CurrentScene = MenuScenes.LevelSelect; LoadMapList(); }
         };
-        private static readonly UIButton continueButton = new UIButton(1100, 600, 60, 60, "8")
+        private static readonly UIButton editorButton = new UIButton(1200, 680, 380, 60, "Level Editor")
+        {
+            OnClick = () => { LevelEditor.OpenEditor(); CurrentScene = MenuScenes.LevelEditor; }
+        };
+        private static readonly UIButton settingsButton = new UIButton(1200, 760, 380, 60, "Settings")
+        {
+            OnClick = () => { CurrentScene = MenuScenes.Settings; }
+        };
+        private static readonly UIButton continueButton = new UIButton(1100, 600, 90, 60, "8")
         {
             OnClick = () => {
                 CurrentScene = MenuScenes.Game;
@@ -31,11 +41,24 @@ namespace InfiniTD_2.GameRelated
                 SaveSystem.LoadGame(gameInstance);
             }
         };
-        private static readonly UIButton editorButton = new UIButton(1200, 680, 380, 60, "Level Editor")
+
+        // Settings menu
+        private static readonly UISlider musicSlider = new UISlider(10, 10, 380, 30)
         {
-            OnClick = () => { LevelEditor.OpenEditor(); CurrentScene = MenuScenes.LevelEditor; }
+            OnChanged = (Value) => { MusicPlayer.MusicVolume = Value; MusicPlayer.PlayMainMusic(); SaveSystem.SaveSetting(SaveSystem.SettingType.MusicVolume, Value); },
+            MinValue = 0f,
+            MaxValue = 1f,
+            Value = 0.8f
+        };
+        private static readonly UISlider sfxSlider = new UISlider(10, 60, 380, 30)
+        {
+            OnChanged = (Value) => { MusicPlayer.SfxVolume = Value; SaveSystem.SaveSetting(SaveSystem.SettingType.SfxVolume, Value); },
+            MinValue = 0f,
+            MaxValue = 1f,
+            Value = 0.6f
         };
 
+        // Universal back button
         private static readonly UIButton backButton = new UIButton(10, 830, 60, 60, "3")
         {
             OnClick = () => { CurrentScene = MenuScenes.Main; }
@@ -47,6 +70,12 @@ namespace InfiniTD_2.GameRelated
 
         public static void Init()
         {
+            MusicPlayer.MusicVolume = SaveSystem.LoadSetting<float>(SaveSystem.SettingType.MusicVolume);
+            musicSlider.Value = MusicPlayer.MusicVolume;
+
+            MusicPlayer.SfxVolume = SaveSystem.LoadSetting<float>(SaveSystem.SettingType.SfxVolume);
+            sfxSlider.Value = MusicPlayer.SfxVolume;
+
             MusicPlayer.PlayMainMusic();
             LoadMapList();
         }
@@ -83,20 +112,30 @@ namespace InfiniTD_2.GameRelated
                     playButton.Update();
                     continueButton.Update();
                     editorButton.Update();
+                    settingsButton.Update();
                     break;
+
                 case MenuScenes.LevelSelect:
                     backButton.Update();
                     foreach (var button in levelButtons)
                         button.Update();
                     break;
-                case MenuScenes.Game:
-                    gameInstance.Update();
+
+                case MenuScenes.Settings:
+                    musicSlider.Update();
+                    sfxSlider.Update();
                     backButton.Update();
                     break;
+
+                case MenuScenes.Game:
+                    gameInstance.Update();
+                    break;
+
                 case MenuScenes.LevelEditor:
                     LevelEditor.Update();
                     backButton.Update();
                     break;
+
             }
         }
 
@@ -117,22 +156,34 @@ namespace InfiniTD_2.GameRelated
                     playButton.Draw(buttonFont);
                     continueButton.Draw(iconsFont);
                     editorButton.Draw(buttonFont);
+                    settingsButton.Draw(buttonFont);
                     break;
+
                 case MenuScenes.LevelSelect:
                     backButton.Draw(iconsFont);
                     defaultFont.DrawText("Select Level", 10, 600, 0.7f);
                     foreach (var button in levelButtons)
                         button.Draw(buttonFont);
                     break;
+
+                case MenuScenes.Settings:
+                    musicSlider.Draw(buttonFont);
+                    sfxSlider.Draw(buttonFont);
+                    backButton.Draw(iconsFont);
+                    defaultFont.DrawText("Music Volume", 10, 10, 0.7f);
+                    defaultFont.DrawText("Sfx Volume", 10, 60, 0.7f);
+                    break;
+
                 case MenuScenes.Game:
                     gameInstance.Draw();
-                    backButton.Draw(iconsFont);
                     break;
+
                 case MenuScenes.LevelEditor:
                     LevelEditor.Draw();
                     backButton.Draw(iconsFont);
                     break;
             }
+            defaultFont.DrawText("FPS:" + ((int)(1f / MainApp.DeltaTime)).ToString(),10,880, 0.5f);
         }
     }
 }

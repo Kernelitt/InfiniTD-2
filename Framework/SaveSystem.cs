@@ -5,6 +5,17 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 public static class SaveSystem
 {
+    // Перечисление для выбора нужной настройки
+    public enum SettingType
+    {
+        MasterVolume,
+        MusicVolume,
+        SfxVolume,
+        ScreenWidth,
+        ScreenHeight,
+        Fullscreen
+    }
+
     [Serializable]
     public class SaveData
     {
@@ -28,7 +39,61 @@ public static class SaveSystem
         }
     }
 
-    private static string savePath = "save.dat";
+    private const string savePath = "save.dat";
+
+
+    public static void SaveSetting<T>(SettingType setting, T value)
+    {
+        SaveData data = Load();
+
+        switch (setting)
+        {
+            case SettingType.MasterVolume:
+                data.MasterVolume = (float)(object)value;
+                break;
+            case SettingType.MusicVolume:
+                data.MusicVolume = (float)(object)value;
+                break;
+            case SettingType.SfxVolume:
+                data.SfxVolume = (float)(object)value;
+                break;
+            case SettingType.ScreenWidth:
+                data.ScreenWidth = (int)(object)value;
+                break;
+            case SettingType.ScreenHeight:
+                data.ScreenHeight = (int)(object)value;
+                break;
+            case SettingType.Fullscreen:
+                data.Fullscreen = (bool)(object)value;
+                break;
+        }
+
+        Save(data);
+    }
+
+    public static T LoadSetting<T>(SettingType setting)
+    {
+        SaveData data = Load();
+
+        switch (setting)
+        {
+            case SettingType.MasterVolume:
+                return (T)(object)data.MasterVolume;
+            case SettingType.MusicVolume:
+                return (T)(object)data.MusicVolume;
+            case SettingType.SfxVolume:
+                return (T)(object)data.SfxVolume;
+            case SettingType.ScreenWidth:
+                return (T)(object)data.ScreenWidth;
+            case SettingType.ScreenHeight:
+                return (T)(object)data.ScreenHeight;
+            case SettingType.Fullscreen:
+                return (T)(object)data.Fullscreen;
+            default:
+                return default;
+        }
+    }
+
 
     public static void SaveGame(MainGame game)
     {
@@ -85,10 +150,7 @@ public static class SaveSystem
         }
     }
 
-    public static bool SaveExists()
-    {
-        return File.Exists(savePath);
-    }
+    public static bool SaveExists() => File.Exists(savePath);
 
     public static void Delete()
     {

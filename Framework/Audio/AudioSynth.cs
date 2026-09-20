@@ -199,7 +199,7 @@
                 // Кубический софт-клиппер
                 if (x > 1.0f) x = 1.0f;
                 else if (x < -1.0f) x = -1.0f;
-                else x = x - (x * x * x) / 3.0f;
+                else x -= (x * x * x) / 3.0f;
 
                 outputBuffer[i] = x * 1.2f; // Немного компенсируем громкость после мягкого сжатия
             }
@@ -366,7 +366,7 @@
             PlaySample(buffer);
         }
 
-        public static void PlayKick()
+        public static void PlayKick(float velocity = 1)
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.2f);
@@ -379,14 +379,14 @@
                 float envelope = (float)Math.Exp(-t * 15);
                 // Снизили базовый пиковый уровень с 0.8 до 0.45, чтобы не клипповало при микшировании
                 float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.45f;
-                buffer[i * CHANNELS] = sample;
-                buffer[i * CHANNELS + 1] = sample;
+                buffer[i * CHANNELS] = sample * velocity;
+                buffer[i * CHANNELS + 1] = sample * velocity;
             }
 
             PlaySample(buffer);
         }
 
-        public static void PlayKick808()
+        public static void PlayKick808(float velocity = 1)
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.3f);
@@ -399,14 +399,14 @@
                 float envelope = (float)Math.Exp(-t * 10);
                 // Оптимизировали громкость до 0.5f
                 float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.5f;
-                buffer[i * CHANNELS] = sample;
-                buffer[i * CHANNELS + 1] = sample;
+                buffer[i * CHANNELS] = sample * velocity;
+                buffer[i * CHANNELS + 1] = sample * velocity;
             }
 
             PlaySample(buffer);
         }
 
-        public static void PlaySnare()
+        public static void PlaySnare(float velocity = 1)
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.15f);
@@ -421,14 +421,14 @@
                 float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.3f;
                 float tone = (float)Math.Sin(2 * Math.PI * 200 * t) * envelope * 0.15f;
                 float sample = noise + tone;
-                buffer[i * CHANNELS] = sample;
-                buffer[i * CHANNELS + 1] = sample;
+                buffer[i * CHANNELS] = sample * velocity;
+                buffer[i * CHANNELS + 1] = sample * velocity;
             }
 
             PlaySample(buffer);
         }
 
-        public static void PlaySnare808()
+        public static void PlaySnare808(float velocity = 1)
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.12f);
@@ -442,14 +442,14 @@
                 float noise = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.35f;
                 float tone = (float)Math.Sin(2 * Math.PI * 250 * t) * envelope * 0.2f;
                 float sample = noise + tone;
-                buffer[i * CHANNELS] = sample;
-                buffer[i * CHANNELS + 1] = sample;
+                buffer[i * CHANNELS] = sample * velocity;
+                buffer[i * CHANNELS + 1] = sample * velocity;
             }
 
             PlaySample(buffer);
         }
 
-        public static void PlayHiHat()
+        public static void PlayHiHat(float velocity = 1)
         {
             if (!isInitialized) return;
             int samples = (int)(SAMPLE_RATE * 0.05f);
@@ -461,17 +461,148 @@
                 float t = (float)i / SAMPLE_RATE;
                 float envelope = (float)Math.Exp(-t * 50);
                 // Хэты были слишком громкими, снизили до 0.15f
-                float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.15f;
+                float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.15f * velocity;
                 buffer[i * CHANNELS] = sample;
                 buffer[i * CHANNELS + 1] = sample;
             }
 
             PlaySample(buffer);
         }
-        public static void PlayHiHatOpen() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.15f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 25); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
-        public static void PlayClap() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.2f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 15); if (t < 0.01f) envelope = 0; float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.6f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
-        public static void PlayCrash() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.5f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 8); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
-        public static void PlayLaser() { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.3f); float[] buffer = new float[samples * CHANNELS]; for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float freq = 800 * (float)Math.Exp(-t * 10); float envelope = (float)Math.Exp(-t * 15); float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.5f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
+
+        public static void PlaySynthwavePad(int frequency, float duration = 1.5f, float velocity = 1.0f)
+        {
+            if (!isInitialized) return;
+            int samples = (int)(SAMPLE_RATE * duration);
+            float[] buffer = new float[samples * CHANNELS];
+
+            float attackTime = 0.2f;  // Плавная атака
+            float releaseTime = 0.4f; // Долгий хвост
+
+            float phase1 = 0f, phase2 = 0f, phase3 = 0f;
+            // Настройки детюна для жирного аналогового звучания
+            float pInc1 = (float)frequency / SAMPLE_RATE;
+            float pInc2 = (float)(frequency * 0.993f) / SAMPLE_RATE;
+            float pInc3 = (float)(frequency * 1.007f) / SAMPLE_RATE;
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / SAMPLE_RATE;
+
+                // Генерация 3-х пил
+                float saw1 = 2.0f * phase1 - 1.0f; phase1 = (phase1 + pInc1) % 1.0f;
+                float saw2 = 2.0f * phase2 - 1.0f; phase2 = (phase2 + pInc2) % 1.0f;
+                float saw3 = 2.0f * phase3 - 1.0f; phase3 = (phase3 + pInc3) % 1.0f;
+                float mixedSaw = (saw1 + saw2 + saw3) / 3.0f;
+
+                // Простая эмуляция Low-Pass фильтра (срез высоких частот)
+                // Фильтр плавно открывается в начале звука
+                float filterCutoff = t < attackTime ? (t / attackTime) : 1.0f;
+                float sample = mixedSaw * filterCutoff;
+
+                // Огибающая громкости (A-R)
+                float envelope = 1.0f;
+                if (t < attackTime) envelope = t / attackTime;
+                else if (t > duration - releaseTime) envelope = 1.0f - ((t - (duration - releaseTime)) / releaseTime);
+
+                sample = sample * envelope * 0.25f * velocity;
+                buffer[i * CHANNELS] = sample;     // Левый канал
+                buffer[i * CHANNELS + 1] = sample; // Правый канал
+            }
+
+            PlaySample(buffer);
+        }
+
+        public static void PlaySynthwavePluck(int frequency, float duration = 0.25f, float velocity = 1.0f)
+        {
+            if (!isInitialized) return;
+            int samples = (int)(SAMPLE_RATE * duration);
+            float[] buffer = new float[samples * CHANNELS];
+
+            float phase = 0f;
+            float phaseInc = (float)frequency / SAMPLE_RATE;
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / SAMPLE_RATE;
+
+                // Прямоугольная волна (Pulse Width = 50%) дает нужный ретро-характер
+                float pulse = phase < 0.5f ? 1.0f : -1.0f;
+                phase = (phase + phaseInc) % 1.0f;
+
+                // Быстро затухающая огибающая
+                float envelope = (float)Math.Exp(-t * 22);
+
+                float sample = pulse * envelope * 0.2f * velocity;
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
+            }
+
+            PlaySample(buffer);
+        }
+
+        public static void PlayGatedSnare(float velocity = 1)
+        {
+            if (!isInitialized) return;
+            int samples = (int)(SAMPLE_RATE * 0.35f); // Длинный хвост
+            float[] buffer = new float[samples * CHANNELS];
+            Random rand = new Random();
+
+            float gateTime = 0.22f; // Точка резкого закрытия гейта
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / SAMPLE_RATE;
+
+                float noise = (float)(rand.NextDouble() * 2.0 - 1.0);
+                float tone = (float)Math.Sin(2 * Math.PI * 180 * t); // Тональное тело снейра
+
+                // Имитируем гейт: до определенного момента шум идет на полной громкости (эффект хвоста в комнате)
+                float noiseEnv = t < gateTime ? 0.4f : 0.0f;
+                // Резкий спад после открытия гейта
+                if (t >= gateTime) noiseEnv = 0.4f * (float)Math.Exp(-(t - gateTime) * 80);
+
+                float bodyEnv = (float)Math.Exp(-t * 35); // Тело барабана затухает быстро
+
+                float sample = (noise * noiseEnv) + (tone * bodyEnv * 0.25f);
+
+                buffer[i * CHANNELS] = sample * 0.4f * velocity;
+                buffer[i * CHANNELS + 1] = sample * 0.4f * velocity;
+            }
+
+            PlaySample(buffer);
+        }
+
+        public static void PlayRetroTom(float pitchModifier = 1.0f)
+        {
+            if (!isInitialized) return;
+            int samples = (int)(SAMPLE_RATE * 0.25f);
+            float[] buffer = new float[samples * CHANNELS];
+
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / SAMPLE_RATE;
+
+                // Частота падает со стартовой (около 240 Гц) до басового низа
+                float freq = (240f * pitchModifier) * (float)Math.Exp(-t * 18);
+                float envelope = (float)Math.Exp(-t * 8);
+
+                // Смесь синуса для тона и капли шума для удара палочки (Click)
+                float tone = (float)Math.Sin(2 * Math.PI * freq * t);
+                float click = (float)(new Random().NextDouble() * 2.0 - 1.0) * (float)Math.Exp(-t * 120) * 0.2f;
+
+                float sample = (tone + click) * envelope * 0.35f;
+
+                buffer[i * CHANNELS] = sample;
+                buffer[i * CHANNELS + 1] = sample;
+            }
+
+            PlaySample(buffer);
+        }
+
+        public static void PlayHiHatOpen(float velocity = 1) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.15f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 25); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample * velocity; buffer[i * CHANNELS + 1] = sample * velocity; } PlaySample(buffer); }
+        public static void PlayClap(float velocity = 1) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.2f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 15); if (t < 0.01f) envelope = 0; float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.6f; buffer[i * CHANNELS] = sample * velocity; buffer[i * CHANNELS + 1] = sample * velocity; } PlaySample(buffer); }
+        public static void PlayCrash(float velocity = 1) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.5f); float[] buffer = new float[samples * CHANNELS]; Random rand = new Random(); for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float envelope = (float)Math.Exp(-t * 8); float sample = ((float)rand.NextDouble() * 2 - 1) * envelope * 0.5f; buffer[i * CHANNELS] = sample * velocity; buffer[i * CHANNELS + 1] = sample * velocity; } PlaySample(buffer); }
+        public static void PlayLaser(float velocity = 1) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * 0.3f); float[] buffer = new float[samples * CHANNELS]; for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float freq = 800 * (float)Math.Exp(-t * 10); float envelope = (float)Math.Exp(-t * 15); float sample = (float)Math.Sin(2 * Math.PI * freq * t) * envelope * 0.5f; buffer[i * CHANNELS] = sample * velocity; buffer[i * CHANNELS + 1] = sample * velocity; } PlaySample(buffer); }
         public static void PlayTone(int frequency, float duration = 0.1f) { if (!isInitialized) return; int samples = (int)(SAMPLE_RATE * duration); float[] buffer = new float[samples * CHANNELS]; for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float sample = (float)Math.Sin(2 * Math.PI * frequency * t) * 0.3f; buffer[i * CHANNELS] = sample; buffer[i * CHANNELS + 1] = sample; } PlaySample(buffer); }
         public static void PlayChord(int[] frequencies, float duration = 0.2f) { if (!isInitialized || frequencies.Length == 0) return; int samples = (int)(SAMPLE_RATE * duration); float[] buffer = new float[samples * CHANNELS]; foreach (int freq in frequencies) { for (int i = 0; i < samples; i++) { float t = (float)i / SAMPLE_RATE; float sample = (float)Math.Sin(2 * Math.PI * freq * t) * 0.3f / frequencies.Length; buffer[i * CHANNELS] += sample; buffer[i * CHANNELS + 1] += sample; } } PlaySample(buffer); }
         public static void SetVolume(float volume) { if (!isInitialized || hWaveOut == IntPtr.Zero) return; volume = Math.Max(0, Math.Min(1, volume)); uint vol = (uint)(volume * 65535); uint stereoVol = (vol << 16) | vol; waveOutSetVolume(hWaveOut, stereoVol); }

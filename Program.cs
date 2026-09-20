@@ -14,7 +14,7 @@ namespace InfiniTD_2
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        public const string AppVersion = "Pre-Alpha 1.5";
+        public const string AppVersion = "Pre-Alpha 1.6";
 
         [STAThread]
         static void Main(string[] args)

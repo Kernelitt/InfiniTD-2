@@ -86,6 +86,10 @@
             {
                 Notes.Add(new Note(frequency, startTime, duration, "bass", release, velocity, Channel));
             }
+            public void AddPiano(int frequency, float startTime, float duration = 0.3f, float release = 0.1f, float velocity = 1.0f)
+            {
+                Notes.Add(new Note(frequency, startTime, duration, "piano", release, velocity, Channel));
+            }
 
             public void AddLead(int frequency, float startTime, float duration = 0.4f, float release = 0.15f, float velocity = 1.0f)
             {
@@ -101,6 +105,21 @@
             {
                 Notes.Add(new Note(0, startTime, 0, "laser", 0, velocity, Channel));
             }
+
+            public void AddSynthwavePad(int frequency, float startTime, float duration = 1.0f, float velocity = 1.0f)
+            {
+                Notes.Add(new Note(frequency, startTime, duration, "synthwavePad", 0, velocity, Channel));
+            }
+
+            public void AddSynthwavePluck(int frequency, float startTime, float duration = 1.0f, float velocity = 1.0f)
+            {
+                Notes.Add(new Note(frequency, startTime, duration, "synthwavePluck", 0, velocity, Channel));
+            }
+
+            public void AddGatedSnare(float startTime, float velocity = 1.0f)
+            {
+                Notes.Add(new Note(0, startTime, 0, "gatedSnare", 0, velocity, Channel));
+            }
         }
 
         private static readonly Dictionary<string, List<Track>> channels = new Dictionary<string, List<Track>>();
@@ -113,6 +132,8 @@
         private static readonly Dictionary<string, float> channelVolumes = new Dictionary<string, float>();
 
         private static readonly Random random = new Random();
+        public static float MusicVolume = 0.8f;
+        public static float SfxVolume = 0.8f;
         public static void Init()
         {
             channels.Clear();
@@ -283,28 +304,28 @@
                             switch (note.Instrument)
                             {
                                 case "kick":
-                                    AudioSynth.PlayKick();
+                                    AudioSynth.PlayKick(noteVelocity);
                                     break;
                                 case "kick808":
-                                    AudioSynth.PlayKick808();
+                                    AudioSynth.PlayKick808(noteVelocity);
                                     break;
                                 case "snare":
-                                    AudioSynth.PlaySnare();
+                                    AudioSynth.PlaySnare(noteVelocity);
                                     break;
                                 case "snare808":
-                                    AudioSynth.PlaySnare808();
+                                    AudioSynth.PlaySnare808(noteVelocity);
                                     break;
                                 case "hihat":
-                                    AudioSynth.PlayHiHat();
+                                    AudioSynth.PlayHiHat(noteVelocity);
                                     break;
                                 case "hihatOpen":
-                                    AudioSynth.PlayHiHatOpen();
+                                    AudioSynth.PlayHiHatOpen(noteVelocity);
                                     break;
                                 case "clap":
-                                    AudioSynth.PlayClap();
+                                    AudioSynth.PlayClap(noteVelocity);
                                     break;
                                 case "crash":
-                                    AudioSynth.PlayCrash();
+                                    AudioSynth.PlayCrash(noteVelocity);
                                     break;
                                 case "bass":
                                     AudioSynth.PlayBass(note.Frequency, note.Duration, note.Release, noteVelocity);
@@ -313,7 +334,16 @@
                                     AudioSynth.PlayLead(note.Frequency, note.Duration, note.Release, noteVelocity);
                                     break;
                                 case "laser":
-                                    AudioSynth.PlayLaser();
+                                    AudioSynth.PlayLaser(noteVelocity);
+                                    break;
+                                case "synthwavePad":
+                                    AudioSynth.PlaySynthwavePad(note.Frequency, note.Duration, noteVelocity);
+                                    break;
+                                case "synthwavePluck":
+                                    AudioSynth.PlaySynthwavePluck(note.Frequency, note.Duration, noteVelocity);
+                                    break;
+                                case "gatedSnare":
+                                    AudioSynth.PlayGatedSnare(noteVelocity);
                                     break;
                                 case "piano":
                                 default:
@@ -340,44 +370,103 @@
 
         public static void PlayMainMusic()
         {
+            ClearChannel("bgm");
 
-            Track piano = CreateTrack("bgm");
-            Track lead  = CreateTrack("bgm");
             Track drums = CreateTrack("bgm");
+            Track bass = CreateTrack("bgm");
+            Track synths = CreateTrack("bgm"); 
+            Track melody = CreateTrack("bgm"); 
 
-            for (int i = 0; i < 32; i++)
+            int[] chordProgression = { 110, 87, 130, 98 };
+
+            float timeCursor = 0f;
+            float barDuration = 2.0f; 
+
+            for (int bar = 0; bar < 24; bar++)
             {
-                drums.AddKick(0.25f + i);
+                int currentChord = chordProgression[bar % 4];
+                int padFreq = currentChord;
 
-                drums.AddSnare808(0.75f + i);
+                if (bar >= 1)
+                {
+                    for (int beat = 0; beat < 4; beat++)
+                    {
+                        float beatTime = timeCursor + (beat * 0.5f);
 
-                
+                        if (beat == 0) drums.AddKick(beatTime, 2.0f);
+
+                        if ((beat == 2) && bar >= 1) { drums.AddSnare(beatTime, 0.85f); drums.AddGatedSnare(beatTime, 0.45f); }
+
+                        drums.AddHiHat(beatTime + 0.25f, 0.35f);
+                    }
+                }
+
+                if (bar == 3)
+                {
+                    drums.AddSnare(timeCursor + 1.5f, 0.6f);
+                    drums.AddSnare(timeCursor + 1.75f, 0.8f);
+                }
+
+                for (int beat = 0; beat < 4; beat++)
+                {
+                    float beatTime = timeCursor + (beat * 0.5f);
+                    bass.AddPiano(currentChord, beatTime, 0.18f, 0.05f, 0.85f);
+                    bass.AddPiano(currentChord, beatTime + 0.25f, 0.15f, 0.05f, 0.65f);
+                }
+
+                if (bar >= 4)
+                {
+                    synths.AddSynthwavePad(padFreq, timeCursor, barDuration, 0.85f);
+                }
+
+                if (bar >= 4 && bar < 12)
+                {
+                    for (int beat = 0; beat < 4; beat++)
+                    {
+                        float beatTime = timeCursor + (beat * 0.5f);
+                        synths.AddSynthwavePluck(padFreq * 2, beatTime, 0.12f, 0.4f);
+                        synths.AddSynthwavePluck(padFreq * 3, beatTime + 0.25f, 0.12f, 0.3f);
+                    }
+                }
+
+                if (bar >= 8 && bar < 16)
+                {
+                    melody.AddPiano(padFreq * 2, timeCursor + 0.25f, 0.4f, 0.1f, 0.6f);
+                    melody.AddPiano(padFreq * 3, timeCursor + 0.75f, 0.3f, 0.1f, 0.5f);
+                    melody.AddPiano(padFreq * 2, timeCursor + 1.25f, 0.5f, 0.1f, 0.6f);
+                }
+
+                if (bar >= 12 && bar < 20)
+                {
+                    if (bar % 4 == 0) 
+                    {
+                        melody.AddLead(padFreq * 2, timeCursor + 0.0f, 0.4f, 0.15f, 0.7f);
+                        melody.AddLead(padFreq * 3, timeCursor + 0.5f, 0.3f, 0.15f, 0.7f);
+                    }
+                    else if (bar % 4 == 1) 
+                    {
+                        melody.AddLead(padFreq * 2, timeCursor + 0.0f, 0.3f, 0.15f, 0.7f);
+                        melody.AddLead(padFreq, timeCursor + 0.5f, 0.6f, 0.15f, 0.8f);
+                    }
+                    else if (bar % 4 == 2) 
+                    {
+                        melody.AddLead(padFreq * 3, timeCursor + 0.0f, 0.3f, 0.15f, 0.7f);
+                        melody.AddLead(padFreq * 4, timeCursor + 0.5f, 0.3f, 0.15f, 0.7f);
+                    }
+                    else if (bar % 4 == 3) 
+                    {
+                        melody.AddLead(padFreq * 3, timeCursor + 0.0f, 0.4f, 0.15f, 0.7f);
+                        melody.AddLead(padFreq * 2, timeCursor + 0.5f, 0.9f, 0.2f, 0.8f);
+                    }
+                }
+                timeCursor += barDuration;
             }
-            for (int i = 0; i < 36; i++)
-            {
-                piano.AddNote(121, 0.01f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(111, 0.25f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(221, 0.50f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(211, 0.75f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(321, 1.00f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(311, 1.25f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(421, 1.50f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-                piano.AddNote(391, 1.75f + i * 2, 0.4f, "piano", 0.3f, 0.3f);
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                drums.AddKick(0.25f + i);
 
-                drums.AddSnare808(0.75f + i);
-
-
-                piano.AddNote(120, 0.001f  + i * 32, 8f, "lead", 4.2f, 0.2f);
-                piano.AddNote(110, 8.000f  + i * 32, 8f, "lead", 4.2f, 0.2f);
-                piano.AddNote(100, 16.000f + i * 32, 8f, "lead", 4.2f, 0.2f);
-                piano.AddNote(140, 24.00f  + i * 32, 8f, "lead", 4.2f, 0.2f);
-            }
-            Play("bgm", 90f, true);
+            Play("bgm", 100f, true);
+            SetChannelVolume("bgm", 0.75f * MusicVolume); 
         }
+
+
 
         public static void PlayShootSound()
         {
@@ -385,7 +474,7 @@
             Track sound = CreateTrack("sfx" + sfx_num);
             sound.AddLaser(0.001f, 0.3f);
             Play("sfx"+sfx_num, 90f, false);
-            SetChannelVolume("sfx" + sfx_num, 0.5f);
+            SetChannelVolume("sfx" + sfx_num, 0.5f * SfxVolume);
         }
         public static void PlayExplodeSound()
         {
@@ -394,7 +483,7 @@
             sound.AddSnare(0.001f, 0.3f);
             sound.AddCrash(0.001f, 0.3f);
             Play("sfx" + sfx_num, 90f, false);
-            SetChannelVolume("sfx" + sfx_num, 0.5f);
+            SetChannelVolume("sfx" + sfx_num, 0.5f * SfxVolume);
         }
     }
 

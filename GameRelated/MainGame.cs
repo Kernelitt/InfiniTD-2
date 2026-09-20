@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
@@ -14,7 +15,7 @@ namespace InfiniTD_2.GameRelated
 
         [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
         [NonSerialized] private readonly FontInstance iconsFont2 = FontManager.GetFont("Wingdings", 72, 108, 108);
-        [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 72, 108);
+        [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 80, 108);
         [NonSerialized] private readonly FontInstance buttonFont = FontManager.GetFont("Arial", 32, 32, 48);
         [NonSerialized] private readonly List<Enemy> enemies = new List<Enemy>();
         [NonSerialized] private float spawnTimer = 0f;
@@ -24,13 +25,38 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private Tower selectedTower = null;
         [NonSerialized] private byte selectedTowerType = 1;
         [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 120};
+
+        [NonSerialized] private static bool IsGamePaused = false;
+
         [NonSerialized]
-        private UISlider speedSlider = new UISlider(140, 850, 300, 20)
+        private readonly UIButton PauseButton = new UIButton(10, 830, 60, 60, ";")
+        {
+            OnClick = () => { IsGamePaused = true; }
+        };
+        private readonly UIButton PauseResumeButton = new UIButton(1300, 630, 220, 60, "Resume")
+        {
+            OnClick = () => { IsGamePaused = false; }
+        };
+        private readonly UIButton PauseSaveAndExitButton = new UIButton(1300, 720, 220, 60, "Save and quit");
+
+        private readonly UIButton PauseExitButton = new UIButton(1300, 810, 220, 60, "Quit without saving")
+        {
+            OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main;  SaveSystem.SaveGame(new MainGame()); IsGamePaused = false; }
+        };
+
+        [NonSerialized]
+        private readonly UISlider speedSlider = new UISlider(140, 850, 300, 20)
         {
             OnChanged = (Value) => { SimulationSpeed = Value; },
             MinValue = 0.1f,
             MaxValue = 5f,
             Value = 1f
+        };
+
+        [NonSerialized]
+        private readonly UIButton defeatBackButton = new UIButton(730, 530, 150, 40, "Back to menu")
+        {
+            OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main; }
         };
         // Волны
         [NonSerialized] private int CurrentWave = 0;
@@ -108,6 +134,13 @@ namespace InfiniTD_2.GameRelated
         public MainGame(string mapPath = null)
         {
             camera = new Camera();
+
+            PauseSaveAndExitButton.OnClick = () =>
+            {
+                MainMenu.CurrentScene = MenuScenes.Main;
+                SaveSystem.SaveGame(this);
+                IsGamePaused = false;
+            };
 
             if (!string.IsNullOrEmpty(mapPath) && System.IO.File.Exists(mapPath))
             {
@@ -291,95 +324,108 @@ namespace InfiniTD_2.GameRelated
         public void Update()
         {
             camera.Update();
-            speedSlider.Update();
+            
             if (BaseHP <= 0)
             {
                 SimulationSpeed = 0;
+                defeatBackButton.Update();
             }
-            float DeltaTime = (float)MainApp.DeltaTime * SimulationSpeed;
-
-            UpdateWaves(DeltaTime);
-            if (IsWaveActive)
+            else if (IsGamePaused)
             {
-                spawnTimer += DeltaTime;
-                if (spawnTimer >= SpawnInterval && EnemiesSpawned < EnemiesPerWave)
+                SimulationSpeed = 0;
+                PauseResumeButton.Update();
+                PauseExitButton.Update();
+                PauseSaveAndExitButton.Update();
+            }
+            else
+            {
+                PauseButton.Update();
+                speedSlider.Update();
+                float DeltaTime = (float)MainApp.DeltaTime * SimulationSpeed;
+
+                UpdateWaves(DeltaTime);
+                if (IsWaveActive)
                 {
-                    spawnTimer = 0f;
-                    EnemiesSpawned++;
-                    if (currentPath != null && currentPath.Length > 0)
+                    spawnTimer += DeltaTime;
+                    if (spawnTimer >= SpawnInterval && EnemiesSpawned < EnemiesPerWave)
                     {
-                        enemies.Add(new Enemy(currentPath, EnemyHealthMultiplier));
+                        spawnTimer = 0f;
+                        EnemiesSpawned++;
+                        if (currentPath != null && currentPath.Length > 0)
+                        {
+                            enemies.Add(new Enemy(currentPath, EnemyHealthMultiplier));
+                        }
+                    }
+
+                    if (EnemiesSpawned >= EnemiesPerWave)
+                    {
+                        IsWaveActive = false;
+                        CurrentWave++;
+                        WaveTimer = 0f;
                     }
                 }
 
-                if (EnemiesSpawned >= EnemiesPerWave)
+                for (int i = 0; i < enemies.Count; i++)
                 {
-                    IsWaveActive = false;
-                    CurrentWave++;
-                    WaveTimer = 0f;
-                }
-            }
+                    enemies[i].Update(DeltaTime);
 
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                enemies[i].Update(DeltaTime);
-
-                if (!enemies[i].IsActive && enemies[i].PathIndex >= enemies[i].path.Length)
-                {
-                    BaseHP--;
-                }
-            }
-
-            foreach (var tower in towers)
-            {
-                tower.Update(enemies, DeltaTime, projectiles);
-            }
-            foreach (var projectile in projectiles)
-            {
-                projectile.Update(DeltaTime);
-            }
-            projectiles.RemoveAll(p => !p.IsActive);
-
-            // Выбор типа башни
-            if (Input.IsKeyPressed('1')) selectedTowerType = 1;
-            if (Input.IsKeyPressed('2')) selectedTowerType = 2;
-
-            if (Input.IsKeyDown('Q')) HandleTowerPlacement();
-            if (Input.IsKeyDown('E')) HandleTowerMenu();
-
-            // В Update() добавить callback на улучшение:
-            if (selectedTower != null && selectedTower.ShowMenu)
-            {
-                selectedTower.UpdateButtons();
-
-                // Установить callback для кнопки улучшения
-                if (selectedTower.upgradeButton != null)
-                {
-                    selectedTower.upgradeButton.OnClick = () =>
+                    if (!enemies[i].IsActive && enemies[i].PathIndex >= enemies[i].path.Length)
                     {
-                        if (Money >= selectedTower.UpgradeCost)
-                        {
-                            Money -= selectedTower.UpgradeCost;
-                            selectedTower.Upgrade();
-                        }
-                    };
+                        BaseHP--;
+                        if (BaseHP <= 0)
+                            SaveSystem.SaveGame(new MainGame());
+                    }
                 }
-            }
 
-            foreach (var en in enemies)
-            {
-                if (!en.IsActive) Money += 12;
-            }
-            enemies.RemoveAll(e => !e.IsActive);
+                foreach (var tower in towers)
+                {
+                    tower.Update(enemies, DeltaTime, projectiles);
+                }
+                foreach (var projectile in projectiles)
+                {
+                    projectile.Update(DeltaTime);
+                }
+                projectiles.RemoveAll(p => !p.IsActive);
 
-            saveTimer += DeltaTime;
-            if (saveTimer >= SAVE_INTERVAL)
-            {
-                saveTimer = 0f;
-                SaveSystem.SaveGame(this);
-            }
+                // Выбор типа башни
+                if (Input.IsKeyPressed('1')) selectedTowerType = 1;
+                if (Input.IsKeyPressed('2')) selectedTowerType = 2;
 
-            SimulationSpeed = speedSlider.Value;
+                if (Input.IsKeyDown('Q')) HandleTowerPlacement();
+                if (Input.IsKeyDown('E')) HandleTowerMenu();
+
+                // В Update() добавить callback на улучшение:
+                if (selectedTower != null && selectedTower.ShowMenu)
+                {
+                    selectedTower.UpdateButtons();
+                    if (selectedTower.upgradeButton != null)
+                    {
+                        selectedTower.upgradeButton.OnClick = () =>
+                        {
+                            if (Money >= selectedTower.UpgradeCost)
+                            {
+                                Money -= selectedTower.UpgradeCost;
+                                selectedTower.Upgrade();
+                            }
+                        };
+                    }
+                }
+
+                foreach (var en in enemies)
+                {
+                    if (!en.IsActive) Money += 12;
+                }
+                enemies.RemoveAll(e => !e.IsActive);
+
+                saveTimer += DeltaTime;
+                if (saveTimer >= SAVE_INTERVAL)
+                {
+                    saveTimer = 0f;
+                    SaveSystem.SaveGame(this);
+                }
+
+                SimulationSpeed = speedSlider.Value;
+            }
         }
 
         private void HandleTowerPlacement()
@@ -443,8 +489,6 @@ namespace InfiniTD_2.GameRelated
                 selectedTower.UpdateButtons();
             }
         }
-
-
 
         public void Draw()
         {
@@ -523,6 +567,27 @@ namespace InfiniTD_2.GameRelated
                 gameFont.DrawText($"Next wave: {WaveInterval - WaveTimer:F1}s", 10, 740, 0.6f, 0.8f, 0.8f, 0.8f);
             }
             speedSlider.Draw(gameFont);
+
+            if (BaseHP <= 0)
+            {
+                Primitives.DrawQuad(0, 0, 1600, 900, 0.3f, 0.3f, 0.3f, 0.3f);
+                Primitives.DrawQuad(500, 300, 600, 300, 0.4f, 0.4f, 0.4f, 1f);
+                gameFont.DrawText("Game Over", 670, 310, 1, 1 ,0, 0, 1);
+                gameFont.DrawText("Waves completed: "+CurrentWave, 500, 400, 0.6f);
+                defeatBackButton.Draw(buttonFont);
+            }
+            else if (IsGamePaused)
+            {
+                Primitives.DrawQuad(0, 0, 1600, 900, 0.2f, 0.2f, 0.2f, 0.5f);
+                gameFont.DrawText("Paused", 10, 10, 2f);
+                PauseResumeButton.Draw(buttonFont);
+                PauseSaveAndExitButton.Draw(buttonFont);
+                PauseExitButton.Draw(buttonFont);
+            }
+            else
+            {
+                PauseButton.Draw(iconsFont);
+            }
         }
     }
 }

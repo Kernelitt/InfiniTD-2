@@ -23,15 +23,15 @@ namespace InfiniTD_2
             NativeWindow.OnKeyDown += OnKeyDown;
 
             Input.Init();
-
             ResolutionConv.Init();
             MainMenu.Init();
             LevelEditor.Init();
             AudioSynth.Init();
             Graphics.Init();
+
             Graphics.SetViewport(1600, 900);
             GL.ClearColor(0.1f, 0.1f, 0.2f, 1.0f);
-            // Включаем blending для прозрачности
+
             GL.Enable(GL.GL_BLEND);
             GL.BlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -63,10 +63,7 @@ namespace InfiniTD_2
                 AudioSynth.Update();
                 MusicPlayer.Update((float)deltaTime);
                 MainMenu.Update();
-                Input.Update();
-                
-                    
-
+                Input.Update();     
 
                 Render();
             }
@@ -90,8 +87,6 @@ namespace InfiniTD_2
         public static void Render()
         {
             GL.Clear(GL.GL_COLOR_BUFFER_BIT);
-            
-            GL.ClearColor(0.1f, 0.1f, 0.2f, 1);
             Graphics.BeginBatch();
 
             MainMenu.Draw();

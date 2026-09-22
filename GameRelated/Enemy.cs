@@ -8,41 +8,41 @@ namespace InfiniTD_2.GameRelated
     [Serializable]
     public class Enemy
     {
-        public float X { get; set; }
-        public float Y { get; set; }
-        public float Speed { get; set; } = 20f;
-        public float Health { get; set; } = 100f;
-        public float MaxHealth { get; set; } = 100f;
-        public int PathIndex { get; set; } = 0;
-        public bool IsActive { get; set; } = true;
-
+        public float X, Y;
+        public float Health;
+        public float MaxHealth;
+        public int PathIndex;
+        public bool IsActive = true;
         public Vector2[] path;
+        public int CurrentPathIndex; // От какого портала (индекс пути)
 
-        public Enemy(Vector2[] path, float healthMultiplier)
+        public Enemy(Vector2[][] allPaths, int pathIndex, float healthMultiplier)
         {
-            this.path = path;
-            Health *= healthMultiplier;
-            MaxHealth *= healthMultiplier;
-            if (path.Length > 0)
+            CurrentPathIndex = pathIndex;
+            path = allPaths[pathIndex];
+
+            if (path != null && path.Length > 0)
             {
-                X = path[0].X * 50 + 25; // Центр клетки
+                X = path[0].X * 50 + 25;
                 Y = path[0].Y * 50 + 25;
             }
+
+            Health = 100f * healthMultiplier;
+            MaxHealth = Health;
+            PathIndex = 0;
         }
 
         public void Update(float deltaTime)
         {
             if (!IsActive || path == null || path.Length == 0) return;
 
-            if (PathIndex >= path.Length)
+            if (PathIndex >= path.Length - 1)
             {
-                // Достиг базы
                 IsActive = false;
-                MusicPlayer.PlayExplodeSound();
                 return;
             }
 
-            Vector2 target = path[PathIndex];
+            Vector2 target = path[PathIndex + 1];
             float targetX = target.X * 50 + 25;
             float targetY = target.Y * 50 + 25;
 
@@ -50,18 +50,15 @@ namespace InfiniTD_2.GameRelated
             float dy = targetY - Y;
             float distance = (float)Math.Sqrt(dx * dx + dy * dy);
 
-            if (distance < 2f)
+            if (distance < 5f)
             {
-                // Достигли точки пути
                 PathIndex++;
             }
             else
             {
-                // Движение к точке
-                float moveX = (dx / distance) * Speed * deltaTime;
-                float moveY = (dy / distance) * Speed * deltaTime;
-                X += moveX;
-                Y += moveY;
+                float speed = 50f * deltaTime;
+                X += (dx / distance) * speed;
+                Y += (dy / distance) * speed;
             }
         }
 
@@ -72,17 +69,14 @@ namespace InfiniTD_2.GameRelated
             float screenX = (X - camera.X) * camera.Zoom;
             float screenY = (Y - camera.Y) * camera.Zoom;
             float size = 15 * camera.Zoom;
-            // Тёмная обводка
-            Primitives.DrawCircle(screenX, screenY, size, 0.1f, 0.5f, 0.1f, 1f, 16);
+
+            Primitives.DrawCircle(screenX, screenY, size, 0.1f, 0.5f, 0.1f, 1f, 32);
             // Тело врага (зелёный круг)
-            Primitives.DrawCircle(screenX + 1 * camera.Zoom, screenY + 1 * camera.Zoom, size / 1.2f, 0.3f, 0.8f, 0.3f, 1f, 16);
+            Primitives.DrawCircle(screenX + 1 * camera.Zoom, screenY + 1 * camera.Zoom, size / 1.2f, 0.3f, 0.8f, 0.3f, 1f, 32);
 
-
-
-            // Полоска здоровья
-            float healthWidth = 30 * camera.Zoom;
+            float healthWidth = 40 * camera.Zoom;
             float healthHeight = 4 * camera.Zoom;
-            float healthX = screenX - healthWidth / 2;
+            float healthX = screenX - healthWidth / 2.5f;
             float healthY = screenY - size - 5 * camera.Zoom;
 
             // Фон полоски
@@ -95,6 +89,7 @@ namespace InfiniTD_2.GameRelated
 
         public void TakeDamage(float damage)
         {
+            if (!IsActive) return;
             Health -= damage;
             if (Health <= 0)
             {
@@ -102,6 +97,7 @@ namespace InfiniTD_2.GameRelated
             }
         }
     }
+
     [Serializable]
     public struct Vector2
     {
@@ -145,7 +141,9 @@ namespace InfiniTD_2.GameRelated
             }
 
             // Проверка что старт и конец проходимы
-            if (!walkable[start.X, start.Y] || !walkable[end.X, end.Y])
+            if (start.X < 0 || start.X >= mapWidth || start.Y < 0 || start.Y >= mapHeight ||
+                end.X < 0 || end.X >= mapWidth || end.Y < 0 || end.Y >= mapHeight ||
+                !walkable[start.X, start.Y] || !walkable[end.X, end.Y])
             {
                 System.Diagnostics.Debug.WriteLine($"Start or end not walkable! Start: {start.X},{start.Y} End: {end.X},{end.Y}");
                 return new Vector2[0];
@@ -160,10 +158,10 @@ namespace InfiniTD_2.GameRelated
 
             Vector2[] directions = new Vector2[]
             {
-        new Vector2(0, -1),
-        new Vector2(0, 1),
-        new Vector2(-1, 0),
-        new Vector2(1, 0),
+                new Vector2(0, -1),
+                new Vector2(0, 1),
+                new Vector2(-1, 0),
+                new Vector2(1, 0),
             };
 
             bool found = false;
@@ -197,18 +195,6 @@ namespace InfiniTD_2.GameRelated
             {
                 System.Diagnostics.Debug.WriteLine($"Path not found! Map size: {mapWidth}x{mapHeight}");
                 System.Diagnostics.Debug.WriteLine($"Start: {start.X},{start.Y} End: {end.X},{end.Y}");
-
-                // Вывод проходимых клеток для отладки
-                for (int y = 0; y < mapHeight; y++)
-                {
-                    string row = "";
-                    for (int x = 0; x < mapWidth; x++)
-                    {
-                        row += walkable[x, y] ? "1" : "0";
-                    }
-                    System.Diagnostics.Debug.WriteLine(row);
-                }
-
                 return new Vector2[0];
             }
 
@@ -224,17 +210,17 @@ namespace InfiniTD_2.GameRelated
             return path.ToArray();
         }
 
-        // Найти портал и базу на карте
-        public static (Vector2 portalPos, Vector2 basePos) FindSpawnAndBase(Map map)
+        // Найти все порталы и базу на карте
+        public static (List<Vector2> portals, Vector2 basePos) FindSpawnAndBase(Map map)
         {
-            Vector2 portalPos = new Vector2(0, 0);
+            List<Vector2> portals = new List<Vector2>();
             Vector2 basePos = new Vector2(0, 0);
 
             foreach (var tile in map.Tiles)
             {
                 if (tile.Id == (byte)TileTypes.Portal)
                 {
-                    portalPos = new Vector2(tile.X, tile.Y);
+                    portals.Add(new Vector2(tile.X, tile.Y));
                 }
                 else if (tile.Id == (byte)TileTypes.Base)
                 {
@@ -242,7 +228,31 @@ namespace InfiniTD_2.GameRelated
                 }
             }
 
-            return (portalPos, basePos);
+            // Если порталов нет, возвращаем один дефолтный
+            if (portals.Count == 0)
+            {
+                portals.Add(new Vector2(0, 0));
+            }
+
+            return (portals, basePos);
+        }
+
+        // Найти пути от всех порталов к базе
+        public static Vector2[][] FindAllPaths(Map map, List<Vector2> portals, Vector2 basePos)
+        {
+            Vector2[][] allPaths = new Vector2[portals.Count][];
+
+            for (int i = 0; i < portals.Count; i++)
+            {
+                allPaths[i] = FindPath(map, portals[i], basePos);
+
+                if (allPaths[i] == null || allPaths[i].Length == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Path from portal {i} ({portals[i].X},{portals[i].Y}) to base ({basePos.X},{basePos.Y}) not found!");
+                }
+            }
+
+            return allPaths;
         }
     }
 }

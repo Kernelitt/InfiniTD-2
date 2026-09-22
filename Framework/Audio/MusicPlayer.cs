@@ -285,6 +285,7 @@
                     else
                     {
                         channelPlaying[channelName] = false;
+                        ClearChannel(channelName);
                         continue;
                     }
                 }

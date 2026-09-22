@@ -24,7 +24,7 @@ namespace InfiniTD_2.GameRelated
         public static void Init()
         {
             camera = new Camera();
-            editorFont = FontManager.GetFont("Consolas", 60, 60, 84);
+            editorFont = FontManager.GetFont("Consolas", 60);
         }
 
         public static void OpenEditor()
@@ -32,7 +32,7 @@ namespace InfiniTD_2.GameRelated
             isActive = true;
             currentMap = new Map
             {
-                Difficulty = 1.0f,
+                DifficultyMultiplier = 1.0f,
                 Tiles = new Tile[0]
             };
             camera.SetPosition(0, 0);
@@ -52,7 +52,7 @@ namespace InfiniTD_2.GameRelated
             isActive = false;
             currentMap = new Map
             {
-                Difficulty = 1.0f,
+                DifficultyMultiplier = 1.0f,
                 Tiles = new Tile[0]
             };
         }

@@ -44,20 +44,31 @@ namespace InfiniTD_2.Framework
         }
 
         public static void DrawTexturedQuad(float x, float y, float width, float height,
-    float u0, float v0, float u1, float v1,
-    float r, float g, float b, float a)
+            float u0, float v0, float u1, float v1,
+            float r, float g, float b, float a)
         {
             float glX = (x / Graphics.Width) * 2f - 1f;
             float glY = -(y / Graphics.Height) * 2f + 1f;
             float glW = (width / Graphics.Width) * 2f;
             float glH = (height / Graphics.Height) * 2f;
 
-            // 4 вершины для GL_TRIANGLE_FAN
-            Graphics.AddTexturedVertex(glX, glY - glH, u0, v1, r, g, b, a);  // Bottom-left
-            Graphics.AddTexturedVertex(glX, glY, u0, v0, r, g, b, a);        // Top-left
-            Graphics.AddTexturedVertex(glX + glW, glY, u1, v0, r, g, b, a);  // Top-right
-            Graphics.AddTexturedVertex(glX + glW, glY - glH, u1, v1, r, g, b, a); // Bottom-right
+            // Вычисляем крайние точки для удобства
+            float left = glX;
+            float right = glX + glW;
+            float top = glY;
+            float bottom = glY - glH;
+
+            // ТРЕУГОЛЬНИК 1: Нижний-левый, Верхний-левый, Верхний-правый
+            Graphics.AddTexturedVertex(left, bottom, u0, v1, r, g, b, a);
+            Graphics.AddTexturedVertex(left, top, u0, v0, r, g, b, a);
+            Graphics.AddTexturedVertex(right, top, u1, v0, r, g, b, a);
+
+            // ТРЕУГОЛЬНИК 2: Нижний-левый, Верхний-правый, Нижний-правый
+            Graphics.AddTexturedVertex(left, bottom, u0, v1, r, g, b, a);
+            Graphics.AddTexturedVertex(right, top, u1, v0, r, g, b, a);
+            Graphics.AddTexturedVertex(right, bottom, u1, v1, r, g, b, a);
         }
+
 
         public static void DrawCircle(float centerX, float centerY, float radius, float r, float g, float b, float a, int segments = 32)
         {

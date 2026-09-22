@@ -167,6 +167,23 @@ namespace InfiniTD_2
         static WNDCLASS wc;
         static WndProcDelegate wndProcDelegate;
 
+        [DllImport("opengl32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+        static extern IntPtr wglGetProcAddress(string lpszProc);
+
+        // Делегат для функции wglSwapIntervalEXT
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        delegate bool wglSwapIntervalEXTDelegate(int interval);
+        private static wglSwapIntervalEXTDelegate wglSwapIntervalEXT;
+
+        [DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")]
+        static extern uint timeBeginPeriod(uint uPeriod);
+
+        [DllImport("winmm.dll", EntryPoint = "timeEndPeriod")]
+        static extern uint timeEndPeriod(uint uPeriod);
+
+        private static System.Diagnostics.Stopwatch fpsLimitStopwatch;
+        private static double targetFrameTimeMs = 0; // 0 означает, что FPS не ограничен
+
         static bool isFullScreen = false;
         static uint windowedStyle;
         static RECT windowedRect;
@@ -333,6 +350,51 @@ namespace InfiniTD_2
                 ShowWindow(hwnd, SW_SHOW);
             }
         }
+        public static void SetFPSLimit(int maxFps)
+        {
+            if (maxFps <= 10)
+            {
+                targetFrameTimeMs = 0;
+            }
+            else
+            {
+                targetFrameTimeMs = 1000.0 / maxFps;
+            }
+
+            if (fpsLimitStopwatch == null)
+            {
+                fpsLimitStopwatch = new System.Diagnostics.Stopwatch();
+                timeBeginPeriod(1); // Высокоточный режим Windows
+            }
+
+            // ИСПРАВЛЕНИЕ: Сразу запускаем таймер, чтобы избежать дикой разницы во времени при первом кадре
+            fpsLimitStopwatch.Restart();
+        }
+
+        public static void SetVSync(bool enabled)
+        {
+            if (hglrc == IntPtr.Zero) return;
+
+            // Если функция расширения еще не была найдена, запрашиваем её адрес у драйвера
+            if (wglSwapIntervalEXT == null)
+            {
+                IntPtr procAddress = wglGetProcAddress("wglSwapIntervalEXT");
+                if (procAddress != IntPtr.Zero)
+                {
+                    wglSwapIntervalEXT = Marshal.GetDelegateForFunctionPointer<wglSwapIntervalEXTDelegate>(procAddress);
+                }
+            }
+
+            // Вызываем расширение: 1 - включить V-Sync, 0 - выключить
+            if (wglSwapIntervalEXT != null)
+            {
+                wglSwapIntervalEXT(enabled ? 1 : 0);
+            }
+            else
+            {
+                Console.WriteLine("Предупреждение: wglSwapIntervalEXT не поддерживается вашей видеокартой или драйвером.");
+            }
+        }
 
         [DllImport("user32.dll")]
         static extern int GetSystemMetrics(int nIndex);
@@ -399,13 +461,41 @@ namespace InfiniTD_2
             GetClientRect(hwnd, out var rect);
             Width = rect.right - rect.left;
             Height = rect.bottom - rect.top;
-            // Убрали вызов GL.Viewport отсюда
         }
 
         public static void Swap()
         {
+            // Если лимит FPS включен
+            if (targetFrameTimeMs > 0 && fpsLimitStopwatch != null)
+            {
+                // Ждем, пока не наступит время целевого кадра
+                while (true)
+                {
+                    double elapsedMs = (double)fpsLimitStopwatch.ElapsedTicks / System.TimeSpan.TicksPerMillisecond;
+                    double timeLeft = targetFrameTimeMs - elapsedMs;
+
+                    if (timeLeft <= 0) break;
+
+                    // Если осталось ждать больше 1.5 мс, отдаем квант времени ОС (Thread.Sleep)
+                    if (timeLeft > 1.5)
+                    {
+                        System.Threading.Thread.Sleep(1);
+                    }
+                    else
+                    {
+                        // Если осталось совсем чуть-чуть, плавно докручиваем в микро-цикле для идеальной плавности
+                        System.Threading.Thread.SpinWait(1);
+                    }
+                }
+
+                // Перезапускаем таймер для следующего кадра
+                fpsLimitStopwatch.Restart();
+            }
+
+            // Выводим кадр на экран
             SwapBuffers(hdc);
         }
+
 
         public static bool RunMessageLoop()
         {
@@ -429,7 +519,15 @@ namespace InfiniTD_2
             {
                 ReleaseDC(hwnd, hdc);
             }
+
+            // ВОЗВРАЩАЕМ настройки таймера Windows обратно по умолчанию
+            if (fpsLimitStopwatch != null)
+            {
+                timeEndPeriod(1);
+            }
+
             Environment.Exit(0);
         }
+
     }
 }

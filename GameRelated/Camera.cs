@@ -41,7 +41,7 @@ namespace InfiniTD_2.GameRelated
             float oldCenterX = CenterX;
             float oldCenterY = CenterY;
 
-            Zoom += amount;
+            Zoom += (float)(amount * MainApp.DeltaTime);
 
             // Ограничиваем зум в пределах от 0.25 до 4.0 через if
             if (Zoom < 0.25f)
@@ -61,7 +61,7 @@ namespace InfiniTD_2.GameRelated
         public void Update()
         {
             // Управление камерой с клавиатуры
-            float moveSpeed = 10f / Zoom;
+            float moveSpeed = (float)(250f / Zoom * MainApp.DeltaTime);
 
             if (Input.IsKeyDown(Input.VK_W) || Input.IsKeyDown(Input.VK_UP))
                 Move(0, -moveSpeed);
@@ -77,9 +77,9 @@ namespace InfiniTD_2.GameRelated
 
             // Приближение и отдаление центрируются автоматически
             if (Input.IsKeyDown((uint)'C'))
-                ZoomToCenter(0.01f); // Измените знак на минус, если зум работает не в ту сторону
+                ZoomToCenter(0.3f); // Измените знак на минус, если зум работает не в ту сторону
             if (Input.IsKeyDown((uint)'X'))
-                ZoomToCenter(-0.01f);
+                ZoomToCenter(-0.3f);
         }
     }
 }

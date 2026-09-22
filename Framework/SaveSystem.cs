@@ -13,7 +13,8 @@ public static class SaveSystem
         SfxVolume,
         ScreenWidth,
         ScreenHeight,
-        Fullscreen
+        VSync,
+        MaxFPS
     }
 
     [Serializable]
@@ -24,11 +25,14 @@ public static class SaveSystem
         public float SfxVolume;
         public int ScreenWidth;
         public int ScreenHeight;
-        public bool Fullscreen;
+        public bool VSync;
+        public int MaxFPS;
         public int TotalCrystals; // Накопленные кристаллы
         public int MapsUnlocked;  // Количество открытых карт
 
         public MainGame.GameState GameState;
+
+        public CampaignProgress campaignProgress;
 
         public SaveData()
         {
@@ -37,7 +41,8 @@ public static class SaveSystem
             SfxVolume = 1.0f;
             ScreenWidth = 1600;
             ScreenHeight = 900;
-            Fullscreen = false;
+            VSync = false;
+            MaxFPS = 60;
         }
     }
 
@@ -65,8 +70,11 @@ public static class SaveSystem
             case SettingType.ScreenHeight:
                 data.ScreenHeight = (int)(object)value;
                 break;
-            case SettingType.Fullscreen:
-                data.Fullscreen = (bool)(object)value;
+            case SettingType.VSync:
+                data.VSync = (bool)(object)value;
+                break;
+            case SettingType.MaxFPS:
+                data.MaxFPS = (int)(object)value;
                 break;
         }
 
@@ -89,8 +97,10 @@ public static class SaveSystem
                 return (T)(object)data.ScreenWidth;
             case SettingType.ScreenHeight:
                 return (T)(object)data.ScreenHeight;
-            case SettingType.Fullscreen:
-                return (T)(object)data.Fullscreen;
+            case SettingType.VSync:
+                return (T)(object)data.VSync;
+            case SettingType.MaxFPS:
+                return (T)(object)data.MaxFPS;
             default:
                 return default;
         }
@@ -113,10 +123,10 @@ public static class SaveSystem
         }
     }
 
-    public static void SaveCrystals(int ammount)
+    public static void SaveCrystals(int amount)
     {
         SaveData data = Load();
-        data.TotalCrystals += ammount;
+        data.TotalCrystals += amount;
         Save(data);
     }
 
@@ -124,6 +134,19 @@ public static class SaveSystem
     {
         SaveData data = Load();
         return data.TotalCrystals;
+    }
+
+    public static void SaveCampaign(CampaignProgress progress)
+    {
+        SaveData data = Load();
+        data.campaignProgress = progress;
+        Save(data);
+    }
+
+    public static CampaignProgress LoadCampaign()
+    {
+        SaveData data = Load();
+        return data.campaignProgress;
     }
 
     public static void Save(SaveData data)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace InfiniTD_2.GameRelated
 {
@@ -21,12 +22,18 @@ namespace InfiniTD_2.GameRelated
     {
         Basic
     }
+
     [Serializable]
-    public struct Map
+    public class Map
     {
         public Tile[] Tiles;
-        public float Difficulty;
+        public List<Vector2> Portals = new List<Vector2>(); // Несколько порталов
+        public Vector2 Base;
+        public float DifficultyMultiplier = 1.0f; // Множитель HP врагов
+        public string MapName = "Unknown";
+        public int StarsRequired = 0; // Нужно звёзд для открытия
     }
+
     [Serializable]
     public struct Tile
     {

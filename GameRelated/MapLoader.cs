@@ -16,7 +16,7 @@ namespace InfiniTD_2.GameRelated
                 Map map = new Map
                 {
                     // Читаем сложность
-                    Difficulty = reader.ReadSingle()
+                    DifficultyMultiplier = reader.ReadSingle()
                 };
 
                 // Читаем количество тайлов
@@ -45,7 +45,7 @@ namespace InfiniTD_2.GameRelated
             using (var writer = new BinaryWriter(stream))
             {
                 // Пишем сложность
-                writer.Write(map.Difficulty);
+                writer.Write(map.DifficultyMultiplier);
 
                 // Пишем количество тайлов
                 writer.Write(map.Tiles.Length);

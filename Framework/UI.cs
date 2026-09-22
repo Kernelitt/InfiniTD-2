@@ -145,7 +145,7 @@ namespace InfiniTD_2.Framework
             int mx = Input.VirtualMouseX;
             int my = Input.VirtualMouseY;
 
-            bool isHovered = mx >= X && mx <= X + Width && my >= Y && my <= Y + Height;
+            bool isHovered = mx >= X - 5 && mx <= X + Width && my >= Y && my <= Y + Height;
             bool isClicked = Input.IsMouseButtonPressed(0);
             bool isPressed = Input.IsMouseButtonDown(0);
 

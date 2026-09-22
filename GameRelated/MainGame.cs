@@ -13,13 +13,13 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private static Map currentMap;
         [NonSerialized] private readonly Camera camera;
 
-        [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
-        [NonSerialized] private readonly FontInstance iconsFont2 = FontManager.GetFont("Wingdings", 72, 108, 108);
-        [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72, 80, 108);
-        [NonSerialized] private readonly FontInstance buttonFont = FontManager.GetFont("Arial", 32, 32, 48);
+        [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72);
+        [NonSerialized] private readonly FontInstance iconsFont2 = FontManager.GetFont("Wingdings", 72);
+        [NonSerialized] private readonly FontInstance gameFont = FontManager.GetFont("Bahnschrift", 72);
+        [NonSerialized] private readonly FontInstance buttonFont = FontManager.GetFont("Arial", 32);
         [NonSerialized] private readonly List<Enemy> enemies = new List<Enemy>();
         [NonSerialized] private float spawnTimer = 0f;
-        [NonSerialized] private Vector2[] currentPath;
+        [NonSerialized] private Vector2[][] allPaths;
         [NonSerialized] private readonly List<Tower> towers = new List<Tower>();
         [NonSerialized] private readonly List<Projectile> projectiles = new List<Projectile>();
         [NonSerialized] private Tower selectedTower = null;
@@ -82,6 +82,7 @@ namespace InfiniTD_2.GameRelated
             public byte selectedTowerType;
             public Map usedMap;
             // Состояние врагов
+            public Vector2[][] AllPaths;
             public EnemyState[] Enemies;
 
             // Состояние башен
@@ -98,6 +99,7 @@ namespace InfiniTD_2.GameRelated
             public float Y;
             public float Health;
             public int PathIndex;
+            public int CurrentPathIndex;
         }
 
         [Serializable]
@@ -125,12 +127,12 @@ namespace InfiniTD_2.GameRelated
             public float SplashRadius;
         }
 
-        public MainGame(string mapPath = null)
+        public MainGame(string mapPath = null, Map alternativeMap = null)
         {
             camera = new Camera();
 
 
-            defeatBackButton.OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main; Dispose(); };
+            defeatBackButton.OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main; SaveSystem.SaveGame(new MainGame()); Dispose(); };
         
             
 
@@ -157,15 +159,27 @@ namespace InfiniTD_2.GameRelated
             {
                 currentMap = MapLoader.LoadMap(mapPath);
             }
+            else if (alternativeMap != null)
+            {
+                currentMap = alternativeMap;
+            }
             else
             {
-                currentMap = new Map
-                {
-                    Tiles = new Tile[0]
-                };
+                currentMap = new Map { Tiles = new Tile[0], Portals = new List<Vector2>() };
             }
-            var (portal, basePos) = Pathfinding.FindSpawnAndBase(currentMap);
-            currentPath = Pathfinding.FindPath(currentMap, portal, basePos);
+
+            var (foundPortals, basePos) = Pathfinding.FindSpawnAndBase(currentMap);
+            var portals = foundPortals;
+
+            // Если порталов нет, создаём один дефолтный
+            if (portals.Count == 0)
+            {
+                portals.Add(new Vector2(0, 0));
+            }
+
+            // Находим пути от всех порталов
+            allPaths = Pathfinding.FindAllPaths(currentMap, portals, basePos);
+        
         }
 
         private void UpdateWaves(float deltaTime)
@@ -188,7 +202,7 @@ namespace InfiniTD_2.GameRelated
             spawnTimer = 0f;
 
             EnemiesPerWave = 5 + (int)Math.Sqrt(CurrentWave) * 2;
-            EnemyHealthMultiplier = 1f + (float)Math.Pow(1.15, CurrentWave) / 3;
+            EnemyHealthMultiplier = (1f + (float)Math.Pow(1.15, CurrentWave) / 3) * currentMap.DifficultyMultiplier;
             SpawnInterval = Math.Max(0.3f, 2f - CurrentWave * 0.01f);
         }
 
@@ -208,6 +222,7 @@ namespace InfiniTD_2.GameRelated
                 spawnTimer = spawnTimer,
                 selectedTowerType = selectedTowerType,
                 usedMap = currentMap,
+                AllPaths = allPaths,
 
                 Enemies = new EnemyState[enemies.Count],
                 Towers = new TowerState[towers.Count],
@@ -221,7 +236,8 @@ namespace InfiniTD_2.GameRelated
                     X = enemies[i].X,
                     Y = enemies[i].Y,
                     Health = enemies[i].Health,
-                    PathIndex = enemies[i].PathIndex
+                    PathIndex = enemies[i].PathIndex,
+                    CurrentPathIndex = enemies[i].CurrentPathIndex // От какого портала
                 };
             }
 
@@ -289,20 +305,18 @@ namespace InfiniTD_2.GameRelated
             spawnTimer = state.spawnTimer;
             selectedTowerType = state.selectedTowerType;
             currentMap = state.usedMap;
-
-            var (portal, basePos) = Pathfinding.FindSpawnAndBase(currentMap);
-            currentPath = Pathfinding.FindPath(currentMap, portal, basePos);
+            allPaths = state.AllPaths;
 
             enemies.Clear();
             foreach (var enemyState in state.Enemies)
             {
-                var enemy = new Enemy(currentPath, EnemyHealthMultiplier)
+                // Создаём врага с правильным путём
+                var enemy = new Enemy(allPaths, enemyState.CurrentPathIndex, EnemyHealthMultiplier)
                 {
                     X = enemyState.X,
                     Y = enemyState.Y,
                     Health = enemyState.Health,
-                    PathIndex = enemyState.PathIndex,
-                    path = currentPath
+                    PathIndex = enemyState.PathIndex
                 };
                 enemies.Add(enemy);
             }
@@ -362,9 +376,10 @@ namespace InfiniTD_2.GameRelated
                     {
                         spawnTimer = 0f;
                         EnemiesSpawned++;
-                        if (currentPath != null && currentPath.Length > 0)
+                        if (allPaths != null && allPaths.Length > 0)
                         {
-                            enemies.Add(new Enemy(currentPath, EnemyHealthMultiplier));
+                            int portalIndex = EnemiesSpawned % allPaths.Length; // Равномерное распределение
+                            enemies.Add(new Enemy(allPaths, portalIndex, EnemyHealthMultiplier));
                         }
                     }
 
@@ -374,18 +389,6 @@ namespace InfiniTD_2.GameRelated
                         Crystals += 15 + (int)Math.Sqrt(CurrentWave * 10);
                         CurrentWave++;
                         WaveTimer = 0f;
-                    }
-                }
-
-                for (int i = 0; i < enemies.Count; i++)
-                {
-                    enemies[i].Update(DeltaTime);
-
-                    if (!enemies[i].IsActive && enemies[i].PathIndex >= enemies[i].path.Length)
-                    {
-                        BaseHP--;
-                        if (BaseHP <= 0)
-                            SaveSystem.SaveGame(new MainGame());
                     }
                 }
 
@@ -423,17 +426,35 @@ namespace InfiniTD_2.GameRelated
                     }
                 }
 
+
                 foreach (var en in enemies)
                 {
-                    if (!en.IsActive && !(en.PathIndex >= en.path.Length))
-                    {
-                        Money += 12;
-                        Crystals += 2 + (int)Math.Sqrt(CurrentWave / 2);
+                    en.Update(DeltaTime);
 
+                    if (!en.IsActive)
+                    {
+                        // Проверяем достиг ли враг конца пути перед смертью
+                        bool reachedEnd = en.path != null && en.path.Length > 0 && en.PathIndex >= en.path.Length - 1;
+
+                        if (reachedEnd)
+                        {
+                            // Дошёл до базы
+                            BaseHP--;
+                            if (BaseHP <= 0)
+                            {
+                                SaveSystem.SaveGame(this);
+                            }
+                        }
+                        else
+                        {
+                            // Умер от урона
+                            Money += 12;
+                            Crystals += 2 + (int)Math.Sqrt(CurrentWave / 2);
+                        }
                     }
                 }
                 enemies.RemoveAll(e => !e.IsActive);
-                
+
                 saveTimer += DeltaTime;
                 if (saveTimer >= SAVE_INTERVAL)
                 {
@@ -537,18 +558,6 @@ namespace InfiniTD_2.GameRelated
                 }
             }
 
-            if (currentPath != null)
-            {
-                for (int i = 0; i < currentPath.Length - 1; i++)
-                {
-                    float x1 = (currentPath[i].X * 50 + 25 - camera.X) * camera.Zoom;
-                    float y1 = (currentPath[i].Y * 50 + 25 - camera.Y) * camera.Zoom;
-                    float x2 = (currentPath[i + 1].X * 50 + 25 - camera.X) * camera.Zoom;
-                    float y2 = (currentPath[i + 1].Y * 50 + 25 - camera.Y) * camera.Zoom;
-
-                    Primitives.DrawLine(x1, y1, x2, y2, 2 * camera.Zoom, 1f, 0f, 0f, 0.5f);
-                }
-            }
             foreach (var tower in towers)
             {
                 tower.Draw(camera, buttonFont);
@@ -564,13 +573,18 @@ namespace InfiniTD_2.GameRelated
 
             iconsFont.DrawText("Y", 10, 15, 1, 1, 0, 0);
             gameFont.DrawText(BaseHP.ToString(), 50, 20, 1);
+
             iconsFont.DrawText("n", 10, 65, 1, 1, 1, 0);
             gameFont.DrawText(Money.ToString(), 50, 70, 1);
+
             iconsFont2.DrawText("h", 10, 115, 1, 0.2f, 0.2f, 1);
             gameFont.DrawText(CurrentWave.ToString(), 50, 120, 1);
+
+            iconsFont2.DrawText("t", 10, 165, 1, 0, 1, 1); // Кристалл
+            gameFont.DrawText(Crystals.ToString(), 50, 170, 1, 1, 1, 1);
+
             gameFont.DrawText($"Enemies: {enemies.Count}", 10, 800, 0.5f, 1f, 1f, 1f);
-            //iconsFont2.DrawText("t", 10, 165, 1, 0, 1, 1); // Кристалл
-            //gameFont.DrawText(Crystals.ToString(), 50, 170, 1, 1, 1, 1);
+
             // Отображение доступных башен
             gameFont.DrawText("Towers: 1=Basic($50), 2=Sniper($120)", 10, 150, 0.4f, 0.8f, 0.8f, 0.8f);
             gameFont.DrawText($"Selected: {selectedTowerType}", 10, 180, 0.5f, 1f, 1f, 0.5f);
@@ -599,6 +613,7 @@ namespace InfiniTD_2.GameRelated
             {
                 Primitives.DrawQuad(0, 0, 1600, 900, 0.2f, 0.2f, 0.2f, 0.5f);
                 gameFont.DrawText("Paused", 10, 10, 2f);
+                if (currentMap.MapName != null) gameFont.DrawText(currentMap.MapName, 10, 80, 1f);
                 PauseResumeButton.Draw(buttonFont);
                 PauseSaveAndExitButton.Draw(buttonFont);
                 PauseExitButton.Draw(buttonFont);
@@ -615,6 +630,7 @@ namespace InfiniTD_2.GameRelated
             {
                 // Сохранение кристаллов перед закрытием
                 SaveSystem.SaveCrystals(Crystals);
+                MainMenu.UpdateCrystals();
 
                 saveTimer = 0f;
                 IsGamePaused = false;

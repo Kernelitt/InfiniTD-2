@@ -25,6 +25,8 @@ public static class SaveSystem
         public int ScreenWidth;
         public int ScreenHeight;
         public bool Fullscreen;
+        public int TotalCrystals; // Накопленные кристаллы
+        public int MapsUnlocked;  // Количество открытых карт
 
         public MainGame.GameState GameState;
 
@@ -109,6 +111,19 @@ public static class SaveSystem
         {
             game.LoadFromData(data.GameState);
         }
+    }
+
+    public static void SaveCrystals(int ammount)
+    {
+        SaveData data = Load();
+        data.TotalCrystals += ammount;
+        Save(data);
+    }
+
+    public static int LoadCrystals()
+    {
+        SaveData data = Load();
+        return data.TotalCrystals;
     }
 
     public static void Save(SaveData data)

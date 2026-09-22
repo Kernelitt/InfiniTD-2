@@ -1,16 +1,16 @@
-﻿using System;
+﻿using InfiniTD_2.Framework;
+using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using InfiniTD_2.Framework;
 
 namespace InfiniTD_2.GameRelated
 {
     [Serializable]
-    public class MainGame
+    public class MainGame : IDisposable
     {
         [NonSerialized] private int BaseHP = 10;
         [NonSerialized] private int Money = 100;
-        [NonSerialized] private Map currentMap;
+        [NonSerialized] private int Crystals = 0;
+        [NonSerialized] private static Map currentMap;
         [NonSerialized] private readonly Camera camera;
 
         [NonSerialized] private readonly FontInstance iconsFont = FontManager.GetFont("Webdings", 72, 108, 108);
@@ -27,9 +27,9 @@ namespace InfiniTD_2.GameRelated
         [NonSerialized] private readonly int[] towerCosts = new int[] { 0, 50, 120};
 
         [NonSerialized] private static bool IsGamePaused = false;
-
+        [NonSerialized] private bool isDisposed = false;
         [NonSerialized]
-        private readonly UIButton PauseButton = new UIButton(10, 830, 60, 60, ";")
+        private readonly UIButton PauseButton = new UIButton(10, 830, 50, 50, ";")
         {
             OnClick = () => { IsGamePaused = true; }
         };
@@ -39,10 +39,7 @@ namespace InfiniTD_2.GameRelated
         };
         private readonly UIButton PauseSaveAndExitButton = new UIButton(1300, 720, 220, 60, "Save and quit");
 
-        private readonly UIButton PauseExitButton = new UIButton(1300, 810, 220, 60, "Quit without saving")
-        {
-            OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main;  SaveSystem.SaveGame(new MainGame()); IsGamePaused = false; }
-        };
+        private readonly UIButton PauseExitButton = new UIButton(1300, 810, 220, 60, "Surrender");
 
         [NonSerialized]
         private readonly UISlider speedSlider = new UISlider(140, 850, 300, 20)
@@ -54,10 +51,7 @@ namespace InfiniTD_2.GameRelated
         };
 
         [NonSerialized]
-        private readonly UIButton defeatBackButton = new UIButton(730, 530, 150, 40, "Back to menu")
-        {
-            OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main; }
-        };
+        private readonly UIButton defeatBackButton = new UIButton(730, 530, 150, 40, "Back to menu");
         // Волны
         [NonSerialized] private int CurrentWave = 0;
         [NonSerialized] private float WaveTimer = 0f;
@@ -135,12 +129,29 @@ namespace InfiniTD_2.GameRelated
         {
             camera = new Camera();
 
+
+            defeatBackButton.OnClick = () => { MainMenu.CurrentScene = MenuScenes.Main; Dispose(); };
+        
+            
+
             PauseSaveAndExitButton.OnClick = () =>
             {
                 MainMenu.CurrentScene = MenuScenes.Main;
                 SaveSystem.SaveGame(this);
                 IsGamePaused = false;
+                Dispose();
             };
+
+            PauseExitButton.OnClick = () =>
+            {
+                BaseHP = 0;
+                IsGamePaused = false;
+            };
+
+            if (isDisposed)
+            {
+                throw new ObjectDisposedException(nameof(MainGame));
+            }
 
             if (!string.IsNullOrEmpty(mapPath) && System.IO.File.Exists(mapPath))
             {
@@ -324,7 +335,7 @@ namespace InfiniTD_2.GameRelated
         public void Update()
         {
             camera.Update();
-            
+
             if (BaseHP <= 0)
             {
                 SimulationSpeed = 0;
@@ -360,6 +371,7 @@ namespace InfiniTD_2.GameRelated
                     if (EnemiesSpawned >= EnemiesPerWave)
                     {
                         IsWaveActive = false;
+                        Crystals += 15 + (int)Math.Sqrt(CurrentWave * 10);
                         CurrentWave++;
                         WaveTimer = 0f;
                     }
@@ -413,10 +425,15 @@ namespace InfiniTD_2.GameRelated
 
                 foreach (var en in enemies)
                 {
-                    if (!en.IsActive) Money += 12;
+                    if (!en.IsActive && !(en.PathIndex >= en.path.Length))
+                    {
+                        Money += 12;
+                        Crystals += 2 + (int)Math.Sqrt(CurrentWave / 2);
+
+                    }
                 }
                 enemies.RemoveAll(e => !e.IsActive);
-
+                
                 saveTimer += DeltaTime;
                 if (saveTimer >= SAVE_INTERVAL)
                 {
@@ -427,6 +444,7 @@ namespace InfiniTD_2.GameRelated
                 SimulationSpeed = speedSlider.Value;
             }
         }
+        
 
         private void HandleTowerPlacement()
         {
@@ -551,7 +569,8 @@ namespace InfiniTD_2.GameRelated
             iconsFont2.DrawText("h", 10, 115, 1, 0.2f, 0.2f, 1);
             gameFont.DrawText(CurrentWave.ToString(), 50, 120, 1);
             gameFont.DrawText($"Enemies: {enemies.Count}", 10, 800, 0.5f, 1f, 1f, 1f);
-
+            //iconsFont2.DrawText("t", 10, 165, 1, 0, 1, 1); // Кристалл
+            //gameFont.DrawText(Crystals.ToString(), 50, 170, 1, 1, 1, 1);
             // Отображение доступных башен
             gameFont.DrawText("Towers: 1=Basic($50), 2=Sniper($120)", 10, 150, 0.4f, 0.8f, 0.8f, 0.8f);
             gameFont.DrawText($"Selected: {selectedTowerType}", 10, 180, 0.5f, 1f, 1f, 0.5f);
@@ -587,6 +606,25 @@ namespace InfiniTD_2.GameRelated
             else
             {
                 PauseButton.Draw(iconsFont);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (!isDisposed)
+            {
+                // Сохранение кристаллов перед закрытием
+                SaveSystem.SaveCrystals(Crystals);
+
+                saveTimer = 0f;
+                IsGamePaused = false;
+                SimulationSpeed = 1f;
+
+                enemies.Clear();
+                towers.Clear();
+                projectiles.Clear();
+
+                isDisposed = true;
             }
         }
     }
